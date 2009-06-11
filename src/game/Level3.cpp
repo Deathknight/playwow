@@ -70,6 +70,9 @@ bool ChatHandler::HandleReloadAllCommand(const char*)
     HandleReloadReservedNameCommand("");
     HandleReloadMangosStringCommand("");
     HandleReloadGameTeleCommand("");
+
+    HandleReloadVehicleDataCommand("");
+    HandleReloadVehicleSeatDataCommand("");
     return true;
 }
 
@@ -809,6 +812,22 @@ bool ChatHandler::HandleReloadLocalesQuestCommand(const char* /*arg*/)
     sLog.outString( "Re-Loading Locales Quest ... ");
     objmgr.LoadQuestLocales();
     SendGlobalSysMessage("DB table `locales_quest` reloaded.");
+    return true;
+}
+
+bool ChatHandler::HandleReloadVehicleDataCommand(const char*)
+{
+    sLog.outString( "Re-Loading `vehicle_data` Table!" );
+    objmgr.LoadVehicleData();
+    SendGlobalSysMessage("DB table `vehicle_data` reloaded.");
+    return true;
+}
+
+bool ChatHandler::HandleReloadVehicleSeatDataCommand(const char*)
+{
+    sLog.outString( "Re-Loading `vehicle_seat_data` Table!" );
+    objmgr.LoadVehicleSeatData();
+    SendGlobalSysMessage("DB table `vehicle_seat_data` reloaded.");
     return true;
 }
 

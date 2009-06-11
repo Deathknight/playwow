@@ -28,6 +28,7 @@
 #include "Group.h"
 #include "SocialMgr.h"
 #include "Util.h"
+#include "Vehicle.h"
 
 /* differeces from off:
     -you can uninvite yourself - is is useful
@@ -709,7 +710,7 @@ void WorldSession::BuildPartyMemberStatsChangedPacket(Player *player, WorldPacke
         }
     }
 
-    Pet *pet = player->GetPet();
+    Unit *pet = player->GetCharmOrPet();
     if (mask & GROUP_UPDATE_FLAG_PET_GUID)
     {
         if(pet)
@@ -791,6 +792,11 @@ void WorldSession::BuildPartyMemberStatsChangedPacket(Player *player, WorldPacke
         }
         else
             *data << (uint64) 0;
+    }
+
+    if (mask & GROUP_UPDATE_FLAG_VEHICLE_SEAT)
+    {
+        *data << (uint32) player->m_SeatData.dbc_seat;
     }
 }
 

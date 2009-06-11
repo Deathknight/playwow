@@ -27,6 +27,7 @@
 #include "Spell.h"
 #include "ScriptCalls.h"
 #include "Totem.h"
+#include "Vehicle.h"
 
 void WorldSession::HandleUseItemOpcode(WorldPacket& recvPacket)
 {
@@ -300,6 +301,11 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
     if(mover != _player && mover->GetTypeId()==TYPEID_PLAYER)
         return;
 
+    // vehicle spells are handled by CMSG_PET_CAST_SPELL,
+    // but player is still able to cast own spells
+    if(_player->GetCharmGUID() && _player->GetCharmGUID() == _player->GetVehicleGUID())
+        mover = _player;
+
     sLog.outDebug("WORLD: got cast spell packet, spellId - %u, cast_count: %u, unk_flags %u, data length = %i",
         spellId, cast_count, unk_flags, (uint32)recvPacket.size());
 
@@ -523,16 +529,37 @@ void WorldSession::HandleSpellClick( WorldPacket & recv_data )
     if(!unit)
         return;
 
-    SpellClickInfoMap const& map = objmgr.mSpellClickInfoMap;
-    for(SpellClickInfoMap::const_iterator itr = map.lower_bound(unit->GetEntry()); itr != map.upper_bound(unit->GetEntry()); ++itr)
-    {
-        if(itr->second.questId == 0 || _player->GetQuestStatus(itr->second.questId) == QUEST_STATUS_INCOMPLETE)
-        {
-            Unit *caster = (itr->second.castFlags & 0x1) ? (Unit*)_player : (Unit*)unit;
-            Unit *target = (itr->second.castFlags & 0x2) ? (Unit*)_player : (Unit*)unit;
+    if(!unit->isAlive())
+        return;
 
-            caster->CastSpell(target, itr->second.spellId, true);
+    if(!_player->IsWithinDistInMap(unit, 10))
+        return;
+
+    VehicleDataStructure const* VehicleDS = objmgr.GetVehicleData(unit->GetEntry());
+    if(!VehicleDS)
+        return;
+
+    if(VehicleDS->req_aura)
+        if(!_player->HasAura(VehicleDS->req_aura))
+            return;
+
+    // create vehicle if no one present and kill the original creature to avoid double, triple etc spawns
+    if(!unit->isVehicle())
+    {
+        Vehicle *v = _player->SummonVehicle(unit->GetEntry(), unit->GetPositionX(), unit->GetPositionY(), unit->GetPositionZ(), unit->GetOrientation());
+        if(!v)
+            return;
+
+        if(v->GetVehicleFlags() & VF_DESPAWN_NPC)
+        {
+            v->SetSpawnDuration(unit->GetRespawnDelay()*IN_MILISECONDS);
+            unit->setDeathState(JUST_DIED);
+            unit->RemoveCorpse();
+            unit->SetHealth(0);
         }
+        unit = (Creature*)v;
     }
+
+    _player->EnterVehicle((Vehicle*)unit, 0);
 }
 

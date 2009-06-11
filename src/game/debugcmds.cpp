@@ -601,7 +601,8 @@ bool ChatHandler::HandleDebugArenaCommand(const char * /*args*/)
 
 bool ChatHandler::HandleDebugSpawnVehicle(const char* args)
 {
-    if(!args)
+    // not used currently
+    /*if(!args)
         return false;
 
     char* e = strtok((char*)args, " ");
@@ -644,7 +645,7 @@ bool ChatHandler::HandleDebugSpawnVehicle(const char* args)
         return false;
     }
 
-    map->Add((Creature*)v);
+    map->Add((Creature*)v);*/
 
     return true;
 }

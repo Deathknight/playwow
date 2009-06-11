@@ -2352,29 +2352,84 @@ enum DungeonDifficulties
     TOTAL_DIFFICULTIES
 };
 
+enum SummonCategory
+{
+    SUMMON_CATEGORY_WILD        = 0,
+    SUMMON_CATEGORY_ALLY        = 1,
+    SUMMON_CATEGORY_PET         = 2,
+    SUMMON_CATEGORY_POSSESSED   = 3,
+    SUMMON_CATEGORY_VEHICLE     = 4
+};
+
+enum SummonMask
+{
+    SUMMON_MASK_NONE            = 0x00000000,
+    SUMMON_MASK_SUMMON          = 0x00000001,
+    SUMMON_MASK_GUARDIAN        = 0x00000002,
+    SUMMON_MASK_TOTEM           = 0x00000004,
+    SUMMON_MASK_PET             = 0x00000008,
+    SUMMON_MASK_VEHICLE         = 0x00000010
+};
+
 enum SummonType
 {
-    SUMMON_TYPE_CRITTER     = 41,
-    SUMMON_TYPE_GUARDIAN    = 61,
-    SUMMON_TYPE_TOTEM_SLOT1 = 63,
-    SUMMON_TYPE_WILD        = 64,
-    SUMMON_TYPE_POSESSED    = 65,
-    SUMMON_TYPE_DEMON       = 66,
-    SUMMON_TYPE_SUMMON      = 67,
-    SUMMON_TYPE_TOTEM_SLOT2 = 81,
-    SUMMON_TYPE_TOTEM_SLOT3 = 82,
-    SUMMON_TYPE_TOTEM_SLOT4 = 83,
-    SUMMON_TYPE_TOTEM       = 121,
-    SUMMON_TYPE_UNKNOWN3    = 181,
-    SUMMON_TYPE_UNKNOWN4    = 187,
-    SUMMON_TYPE_UNKNOWN1    = 247,
-    SUMMON_TYPE_CRITTER2    = 407,
-    SUMMON_TYPE_CRITTER3    = 307,
-    SUMMON_TYPE_UNKNOWN5    = 409,
-    SUMMON_TYPE_UNKNOWN2    = 427,
-    SUMMON_TYPE_POSESSED2   = 428,
+    // NOTE : this is outdated like hell
+    SUMMON_TYPE_CRITTER         = 41,
+    SUMMON_TYPE_GUARDIAN        = 61,
+    SUMMON_TYPE_TOTEM_SLOT1     = 63,
+    SUMMON_TYPE_WILD            = 64,
+    SUMMON_TYPE_POSESSED        = 65,
+    SUMMON_TYPE_DEMON           = 66,
+    SUMMON_TYPE_SUMMON          = 67,
+    SUMMON_TYPE_TOTEM_SLOT2     = 81,
+    SUMMON_TYPE_TOTEM_SLOT3     = 82,
+    SUMMON_TYPE_TOTEM_SLOT4     = 83,
+    SUMMON_TYPE_TOTEM           = 121,
+    SUMMON_TYPE_UNKNOWN3        = 181,
+    SUMMON_TYPE_UNKNOWN4        = 187,
+    SUMMON_TYPE_UNKNOWN1        = 247,
+    SUMMON_TYPE_CRITTER2        = 407,
+    SUMMON_TYPE_CRITTER3        = 307,
+    SUMMON_TYPE_VEHICLE1        = 327,
+    SUMMON_TYPE_VEHICLE2        = 367,
+    SUMMON_TYPE_UNKNOWN5        = 409,
+    SUMMON_TYPE_UNKNOWN2        = 427,
+    SUMMON_TYPE_POSESSED2       = 428,
+    SUMMON_TYPE_VEHICLE3        = 488,
+    SUMMON_TYPE_VEHICLE4        = 493,
+    SUMMON_TYPE_VEHICLE5        = 607,
     SUMMON_TYPE_FORCE_OF_NATURE = 669,
-    SUMMON_TYPE_GUARDIAN2   = 1161
+    SUMMON_TYPE_VEHICLE6        = 708,
+    SUMMON_TYPE_VEHICLE7        = 710,
+    SUMMON_TYPE_VEHICLE8        = 716,
+    SUMMON_TYPE_VEHICLE9        = 901,
+    SUMMON_TYPE_VEHICLE10       = 941,
+    SUMMON_TYPE_VEHICLE11       = 1081,
+    SUMMON_TYPE_GUARDIAN2       = 1161,
+    SUMMON_TYPE_VEHICLE12       = 1162,
+    SUMMON_TYPE_VEHICLE13       = 25995
+};
+
+/* NOTE : vehicles and seats has their own flags in DBC,
+but for now, they are too unknown for us, to use them */
+enum CustomVehicleFLags
+{
+    VF_CANT_MOVE                    = 0x0001,                   // vehicle cant move, only turn, maybe handle by some auras?
+    VF_FACTION                      = 0x0002,                   // vehicle retain its own faction
+    VF_DESPAWN_NPC                  = 0x0004,                   // vehicle will delete npc on spellclick
+    VF_DESPAWN_AT_LEAVE             = 0x0008,                   // vehicle will be deleted when rider leaves
+    VF_CAN_BE_HEALED                = 0x0010,                   // vehicle can be healed
+    VF_GIVE_EXP                     = 0x0020,                   // vehicle will give exp for killing enemies
+    VF_MOVEMENT                     = 0x0040                    // vehicle will move on its own, not depending on rider, however rider can cast spells
+    //VF_HAS_FUEL                     = 0x0080,                   // TODO : find out what energy type is fuel and implement this
+};
+
+enum CustomVehicleSeatFLags
+{
+    SF_MAIN_RIDER                   = 0x0001,                   // the one who controlls vehicle, can also cast spells
+    SF_UNATTACKABLE                 = 0x0002,                   // hided inside, and unatackable until vehicle is destroyed
+    SF_CAN_CAST                     = 0x0004,                   // player/npc can rotate, and cast OWN spells
+    SF_UNACCESSIBLE                 = 0x0008                    // player cant enter this seat by normal way (only by script)
 };
 
 enum ResponseCodes
