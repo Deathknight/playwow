@@ -601,8 +601,7 @@ bool ChatHandler::HandleDebugArenaCommand(const char * /*args*/)
 
 bool ChatHandler::HandleDebugSpawnVehicle(const char* args)
 {
-    // not used currently
-    /*if(!args)
+    if(!args)
         return false;
 
     char* e = strtok((char*)args, " ");
@@ -626,7 +625,7 @@ bool ChatHandler::HandleDebugSpawnVehicle(const char* args)
 
     Vehicle *v = new Vehicle;
     Map *map = m_session->GetPlayer()->GetMap();
-    if(!v->Create(objmgr.GenerateLowGuid(HIGHGUID_VEHICLE), map, entry, id, m_session->GetPlayer()->GetTeam()))
+    if(!v->Create(objmgr.GenerateLowGuid(HIGHGUID_VEHICLE), map, m_session->GetPlayer()->GetPhaseMaskForSpawn(), entry, id, m_session->GetPlayer()->GetTeam()))
     {
         delete v;
         return false;
@@ -645,7 +644,8 @@ bool ChatHandler::HandleDebugSpawnVehicle(const char* args)
         return false;
     }
 
-    map->Add((Creature*)v);*/
+    map->Add((Creature*)v);
+    v->AIM_Initialize();
 
     return true;
 }

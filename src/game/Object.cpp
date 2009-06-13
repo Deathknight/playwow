@@ -1667,11 +1667,12 @@ Vehicle* WorldObject::SummonVehicle(uint32 id, float x, float y, float z, float 
         delete v;
         return NULL;
     }
+    map->Add((Creature*)v);
+    v->AIM_Initialize();
 
     if(GetTypeId()==TYPEID_UNIT && ((Creature*)this)->AI())
         ((Creature*)this)->AI()->JustSummoned((Creature*)v);
 
-    map->Add((Creature*)v);
     return v;
 }
 

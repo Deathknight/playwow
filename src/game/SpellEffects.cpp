@@ -6694,7 +6694,8 @@ void Spell::EffectSummonVehicle(uint32 i)
         m_caster->EnterVehicle(v, 0);
     }
     int32 duration = GetSpellMaxDuration(m_spellInfo);
-    v->SetSpawnDuration(duration);
+    if(duration > 0)
+        v->SetSpawnDuration(duration);
 }
 
 void Spell::EffectDamageBuilding(uint32 i)

@@ -23,8 +23,10 @@
 #include "Unit.h"
 #include "Util.h"
 #include "WorldPacket.h"
+#include "InstanceData.h"
 
-Vehicle::Vehicle() : Creature(), m_vehicleId(0), despawn(false), m_creation_time(0)
+Vehicle::Vehicle() : Creature(), m_vehicleId(0), m_vehicleInfo(NULL), m_spawnduration(0),
+                     despawn(false), m_creation_time(0), m_VehicleData(NULL)
 {
     m_isVehicle = true;
     m_updateFlag = (UPDATEFLAG_LIVING | UPDATEFLAG_HAS_POSITION | UPDATEFLAG_VEHICLE);
@@ -51,6 +53,77 @@ void Vehicle::RemoveFromWorld()
     Unit::RemoveFromWorld();
 }
 
+void Vehicle::setDeathState(DeathState s)                       // overwrite virtual Creature::setDeathState and Unit::setDeathState
+{
+    Creature::setDeathState(s);
+    if(s == JUST_DIED)
+    {
+        if(GetVehicleFlags() & VF_DESPAWN_NPC)
+            Dismiss();
+        else
+            RemoveAllPassengers();
+    }
+}
+
+void Vehicle::Update(uint32 diff)
+{
+    Creature::Update(diff);
+    if(despawn)
+    {
+        m_spawnduration -= diff;
+        if(m_spawnduration < 0)
+            Dismiss();
+        despawn = false;
+    }
+}
+
+bool Vehicle::Create(uint32 guidlow, Map *map, uint32 phaseMask, uint32 Entry, uint32 vehicleId, uint32 team, const CreatureData *data)
+{
+    SetMapId(map->GetId());
+    SetInstanceId(map->GetInstanceId());
+    SetPhaseMask(phaseMask,false);
+
+    CreatureInfo const *cinfo = objmgr.GetCreatureTemplate(Entry);
+    if(!cinfo)
+    {
+        sLog.outErrorDb("Creature entry %u does not exist.", Entry);
+        return false;
+    }
+
+    Object::_Create(guidlow, Entry, HIGHGUID_VEHICLE);
+
+    if(!UpdateEntry(Entry, team, data))
+        return false;
+
+	if(!vehicleId)
+	{
+		CreatureDataAddon const *cainfo = GetCreatureAddon();
+		if(!cainfo)
+			return false;
+		vehicleId = cainfo->vehicle_id;
+	}
+    if(!SetVehicleId(vehicleId))
+        return false;
+
+	LoadCreaturesAddon();
+
+	m_regenHealth = false;
+    m_creation_time = getMSTime();
+
+    SetFloatValue(UNIT_FIELD_HOVERHEIGHT, 1.0f);
+    RemoveUnitMovementFlag(MOVEMENTFLAG_WALK_MODE);
+
+    //Notify the map's instance data.
+    //Only works if you create the object in it, not if it is moves to that map.
+    //Normally non-players do not teleport to other maps.
+    if(map->IsDungeon() && ((InstanceMap*)map)->GetInstanceData())
+    {
+        ((InstanceMap*)map)->GetInstanceData()->OnCreatureCreate(this);
+    }
+
+    return true;
+}
+
 bool Vehicle::SetVehicleId(uint32 vehicleid)
 {
     VehicleEntry const *vehicleInfo = sVehicleStore.LookupEntry(vehicleid);
@@ -59,6 +132,11 @@ bool Vehicle::SetVehicleId(uint32 vehicleid)
 
     m_vehicleId = vehicleid;
     m_vehicleInfo = vehicleInfo;
+
+    // can be NULL
+    VehicleDataStructure const *VDStructure = objmgr.GetVehicleData(vehicleid);
+    if(VDStructure)
+        m_VehicleData = VDStructure;
 
     InitSeats();
     return true;
@@ -76,8 +154,8 @@ void Vehicle::InitSeats()
             if(VehicleSeatEntry const *veSeat = sVehicleSeatStore.LookupEntry(seatId))
             {
                 VehicleSeat newseat;
+                //newseat.seatInfo = veSeat;
                 newseat.passenger = NULL;
-                newseat.seatInfo = veSeat;
                 newseat.flags = SEAT_FREE;
                 newseat.vs_flags = objmgr.GetSeatFlags(seatId);
                 m_Seats[i] = newseat;
@@ -201,68 +279,7 @@ void Vehicle::EmptySeatsCountChanged()
     }
 }
 
-void Vehicle::setDeathState(DeathState s)                       // overwrite virtual Creature::setDeathState and Unit::setDeathState
-{
-    Creature::setDeathState(s);
-    if(s == JUST_DIED)
-    {
-        if(GetVehicleFlags() & VF_DESPAWN_NPC)
-            Dismiss();
-        else
-            RemoveAllPassengers();
-    }
-}
 
-void Vehicle::Update(uint32 diff)
-{
-    Creature::Update(diff);
-    if(despawn)
-    {
-        m_spawnduration -= diff;
-        if(m_spawnduration < 0)
-            Dismiss();
-    }
-}
-
-bool Vehicle::Create(uint32 guidlow, Map *map, uint32 phaseMask, uint32 Entry, uint32 vehicleId, uint32 team)
-{
-    SetMapId(map->GetId());
-    SetInstanceId(map->GetInstanceId());
-    SetPhaseMask(phaseMask,false);
-
-    Object::_Create(guidlow, Entry, HIGHGUID_VEHICLE);
-
-    if(!InitEntry(Entry, team))
-        return false;
-
-    if(!SetVehicleId(vehicleId))
-        return false;
-
-    m_defaultMovementType = IDLE_MOTION_TYPE;
-    m_creation_time = getMSTime();
-
-    AIM_Initialize();
-
-    SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
-    SetFloatValue(UNIT_FIELD_HOVERHEIGHT, 1.0f);
-
-    CreatureInfo const *ci = GetCreatureInfo();
-    setFaction(team == ALLIANCE ? ci->faction_A : ci->faction_H);
-    SetMaxHealth(ci->maxhealth);
-    SelectLevel(ci);
-    SetHealth(GetMaxHealth());
-
-    VehicleDataStructure const* VehicleDS = objmgr.GetVehicleData(Entry);
-    // this cant happen, but..
-    if(!VehicleDS)
-        return false;
-    m_vehicleflags = VehicleDS->v_flags;
-
-    RemoveUnitMovementFlag(MOVEMENTFLAG_WALK_MODE);
-    LoadCreaturesAddon();
-
-    return true;
-}
 
 void Vehicle::Dismiss()
 {
@@ -392,22 +409,7 @@ void Vehicle::AddPassenger(Unit *unit, int8 seatId, bool force)
             }
             ((Player*)unit)->SetFarSightGUID(GetGUID());
 
-            VehicleDataStructure const* VehicleDS = objmgr.GetVehicleData(GetEntry());
-            // this cant happen, but..
-            if(!VehicleDS)
-                return;
-            WorldPacket data(SMSG_PET_SPELLS, 8+4+4+4+4*10+1+1);
-            data << uint64(GetGUID());
-            data << uint32(0x00000000);                     // creature family, not used in vehicles
-            data << uint32(0);                              // todo : find out whats this
-            data << uint32(0x00000101);
-
-            for(uint32 i = 0; i < MAX_VEHICLE_SPELLS; ++i)
-                data << uint16(VehicleDS->v_spells[i]) << uint8(0) << uint8(i+8);
-
-            data << uint8(0);                               //aditional spells in spellbook, not used in vehicles
-            data << uint8(0);                               //cooldowns remaining, TODO : handle this sometime, uint8 count, uint32 spell, uint32 time, uint32 time
-            ((Player*)unit)->GetSession()->SendPacket(&data);
+            BuildVehicleActionBar((Player*)unit);
         }
 
         if(!(GetVehicleFlags() & VF_FACTION))
@@ -519,16 +521,57 @@ void Vehicle::RemoveAllPassengers()
 
 bool Vehicle::HasSpell(uint32 spell) const
 {
-    VehicleDataStructure const* VehicleDS = objmgr.GetVehicleData(GetEntry());
-    // this cant happen, but..
-    if(!VehicleDS)
+    if(!m_VehicleData)
         return false;
 
     for(uint8 j = 0; j < MAX_VEHICLE_SPELLS; j++)
     {
-        if(VehicleDS->v_spells[j] == spell)
+        if(m_VehicleData->v_spells[j] == spell)
             return true;
     }
 
     return false;
+}
+
+void Vehicle::BuildVehicleActionBar(Player *plr) const
+{
+    WorldPacket data(SMSG_PET_SPELLS, 8+4+4+4+4*10+1+1);
+    data << uint64(GetGUID());
+    data << uint32(0x00000000);                     // creature family, not used in vehicles
+    data << uint32(0x00000000);                     // unk
+    data << uint32(0x00000101);                     // react state
+
+    for(uint32 i = 0; i < MAX_VEHICLE_SPELLS; ++i)
+    {
+		data << uint16(m_VehicleData ? m_VehicleData->v_spells[i] : NULL);
+        data << uint8(0) << uint8(i+8);
+    }
+
+    data << uint8(0);                               //aditional spells in spellbook, not used in vehicles
+
+    uint8 cooldownsCount = m_CreatureSpellCooldowns.size() + m_CreatureCategoryCooldowns.size();
+    data << uint8(cooldownsCount);
+    time_t curTime = time(NULL);
+
+    for(CreatureSpellCooldowns::const_iterator itr = m_CreatureSpellCooldowns.begin(); itr != m_CreatureSpellCooldowns.end(); ++itr)
+    {
+        time_t cooldown = (itr->second > curTime) ? (itr->second - curTime) * IN_MILISECONDS : 0;
+
+        data << uint32(itr->first);                         // spellid
+        data << uint16(0);                                  // spell category?
+        data << uint32(cooldown);                           // cooldown
+        data << uint32(0);                                  // category cooldown
+    }
+
+    for(CreatureSpellCooldowns::const_iterator itr = m_CreatureCategoryCooldowns.begin(); itr != m_CreatureCategoryCooldowns.end(); ++itr)
+    {
+        time_t cooldown = (itr->second > curTime) ? (itr->second - curTime) * IN_MILISECONDS : 0;
+
+        data << uint32(itr->first);                         // spellid
+        data << uint16(0);                                  // spell category?
+        data << uint32(0);                                  // cooldown
+        data << uint32(cooldown);                           // category cooldown
+    }
+
+    plr->GetSession()->SendPacket(&data);
 }

@@ -742,6 +742,92 @@ void ObjectMgr::ConvertCreatureAddonAuras(CreatureDataAddon* addon, char const* 
     endAura.effect_idx = 0;
 }
 
+void ObjectMgr::ConvertCreatureAddonPassengers(CreatureDataAddon* addon, char const* table, char const* guidEntryStr)
+{
+    // Now add the auras, format "spellid effectindex spellid effectindex..."
+    char *p,*s;
+    std::vector<int> val;
+    s=p=(char*)reinterpret_cast<char const*>(addon->passengers);
+    if(p)
+    {
+        while (p[0]!=0)
+        {
+            ++p;
+            if (p[0]==' ')
+            {
+                val.push_back(atoi(s));
+                s=++p;
+            }
+        }
+        if (p!=s)
+            val.push_back(atoi(s));
+
+        // free char* loaded memory
+        delete[] (char*)reinterpret_cast<char const*>(addon->passengers);
+
+        // wrong list
+        if (val.size()%2)
+        {
+            addon->passengers = NULL;
+            sLog.outErrorDb("Creature (%s: %u) has wrong `passengers` data in `%s`.",guidEntryStr,addon->guidOrEntry,table);
+            return;
+        }
+    }
+
+    // empty list
+    if(val.empty())
+    {
+        addon->passengers = NULL;
+        return;
+    }
+
+    // replace by new structures array
+    const_cast<CreatureDataAddonPassengers*&>(addon->passengers) = new CreatureDataAddonPassengers[val.size()/2+1];
+
+    int i=0;
+    for(int j=0;j<val.size()/2;++j)
+    {
+        CreatureDataAddonPassengers& cPas = const_cast<CreatureDataAddonPassengers&>(addon->passengers[i]);
+        if(guidEntryStr == "Entry")
+            cPas.guidOrEntry = (-1)*(int32)val[2*j+0];
+        else
+            cPas.guidOrEntry = (-1)*(int32)val[2*j+0];
+        cPas.seat_idx = (int32)val[2*j+1];
+        if ( cPas.seat_idx > 7 )
+        {
+            sLog.outErrorDb("Creature (%s: %u) has wrong seat %u for creature %u in `passengers` field in `%s`.",guidEntryStr,addon->guidOrEntry,cPas.seat_idx,cPas.guidOrEntry,table);
+            continue;
+        }
+        if(cPas.guidOrEntry == 0)
+        {
+            sLog.outErrorDb("Creature (%s: %u) has wrong creature entry/guid %u `passengers` field in `%s`.",guidEntryStr,addon->guidOrEntry,cPas.guidOrEntry,table);
+            continue;
+        }
+        if(cPas.guidOrEntry < 0)
+        {
+            if(!sCreatureStorage.LookupEntry<CreatureInfo>((-1)*cPas.guidOrEntry))
+            {
+                sLog.outErrorDb("Creature (%s: %u) has wrong creature entry/guid %u `passengers` field in `%s`.",guidEntryStr,addon->guidOrEntry,cPas.guidOrEntry,table);
+                continue;
+            }
+        }
+        else
+        {
+            if(mCreatureDataMap.find(cPas.guidOrEntry)==mCreatureDataMap.end())
+            {
+                sLog.outErrorDb("Creature (%s: %u) has wrong creature entry/guid %u `passengers` field in `%s`.",guidEntryStr,addon->guidOrEntry,cPas.guidOrEntry,table);
+                continue;
+            }
+        }
+        ++i;
+    }
+
+    // fill terminator element (after last added)
+    CreatureDataAddonPassengers& endPassenger = const_cast<CreatureDataAddonPassengers&>(addon->passengers[i]);
+    endPassenger.guidOrEntry = 0;
+    endPassenger.seat_idx = 0;
+}
+
 void ObjectMgr::LoadCreatureAddons()
 {
     sCreatureInfoAddonStorage.Load();
@@ -769,6 +855,7 @@ void ObjectMgr::LoadCreatureAddons()
             sLog.outErrorDb("Creature (Entry %u) have invalid emote (%u) defined in `creature_template_addon`.",addon->guidOrEntry, addon->emote);
 
         ConvertCreatureAddonAuras(const_cast<CreatureDataAddon*>(addon), "creature_template_addon", "Entry");
+        ConvertCreatureAddonPassengers(const_cast<CreatureDataAddon*>(addon), "creature_template_addon", "Entry");
 
         if(!sCreatureStorage.LookupEntry<CreatureInfo>(addon->guidOrEntry))
             sLog.outErrorDb("Creature (Entry: %u) does not exist but has a record in `creature_template_addon`",addon->guidOrEntry);
@@ -799,6 +886,7 @@ void ObjectMgr::LoadCreatureAddons()
             sLog.outErrorDb("Creature (GUID %u) have invalid emote (%u) defined in `creature_addon`.",addon->guidOrEntry, addon->emote);
 
         ConvertCreatureAddonAuras(const_cast<CreatureDataAddon*>(addon), "creature_addon", "GUIDLow");
+        ConvertCreatureAddonPassengers(const_cast<CreatureDataAddon*>(addon), "creature_addon", "GUIDLow");
 
         if(mCreatureDataMap.find(addon->guidOrEntry)==mCreatureDataMap.end())
             sLog.outErrorDb("Creature (GUID: %u) does not exist but has a record in `creature_addon`",addon->guidOrEntry);

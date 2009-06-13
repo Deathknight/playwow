@@ -524,6 +524,9 @@ void WorldSession::HandleSpellClick( WorldPacket & recv_data )
     uint64 guid;
     recv_data >> guid;
 
+    if(_player->GetVehicleGUID())
+        return;
+
     Creature *unit = ObjectAccessor::GetCreatureOrPetOrVehicle(*_player, guid);
 
     if(!unit)
@@ -535,13 +538,12 @@ void WorldSession::HandleSpellClick( WorldPacket & recv_data )
     if(!_player->IsWithinDistInMap(unit, 10))
         return;
 
-    VehicleDataStructure const* VehicleDS = objmgr.GetVehicleData(unit->GetEntry());
-    if(!VehicleDS)
+    if(unit->isPet())
         return;
 
-    if(VehicleDS->req_aura)
-        if(!_player->HasAura(VehicleDS->req_aura))
-            return;
+    // dont allow hacking
+    if(!unit->HasFlag(UNIT_NPC_FLAGS,UNIT_NPC_FLAG_SPELLCLICK))
+        return;
 
     // create vehicle if no one present and kill the original creature to avoid double, triple etc spawns
     if(!unit->isVehicle())
@@ -559,6 +561,11 @@ void WorldSession::HandleSpellClick( WorldPacket & recv_data )
         }
         unit = (Creature*)v;
     }
+
+    if(((Vehicle*)unit)->GetVehicleData())
+        if(uint32 r_aura = ((Vehicle*)unit)->GetVehicleData()->req_aura)
+            if(!_player->HasAura(r_aura))
+                return;
 
     _player->EnterVehicle((Vehicle*)unit, 0);
 }
