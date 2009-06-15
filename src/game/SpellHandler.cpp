@@ -560,7 +560,7 @@ void WorldSession::HandleSpellClick( WorldPacket & recv_data )
             unit->RemoveCorpse();
             unit->SetHealth(0);
         }
-        unit = (Creature*)v;
+        unit = v;
     }
 
     if(((Vehicle*)unit)->GetVehicleData())

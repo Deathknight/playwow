@@ -1939,6 +1939,10 @@ class MANGOS_DLL_SPEC Player : public Unit
         MovementInfo m_movementInfo;
         void UpdateFallInformationIfNeed(MovementInfo const& minfo,uint16 opcode);
         Unit *m_mover;
+        Unit *m_mover_in_queve;
+
+        void SetMoverInQueve(Unit* pet) {m_mover_in_queve = pet ? pet : this; }
+
         void SetFallInformation(uint32 time, float z)
         {
             m_lastFallTime = time;

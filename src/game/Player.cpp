@@ -452,6 +452,7 @@ Player::Player (WorldSession *session): Unit(), m_achievementMgr(this), m_reputa
     m_unit_movement_flags = 0;
 
     m_mover = this;
+    m_mover_in_queve = NULL;
 
     m_miniPet = 0;
     m_bgAfkReportedTimer = 0;
@@ -17998,6 +17999,7 @@ void Player::SendInitialPacketsBeforeAddToMap()
         m_movementInfo.flags |= MOVEMENTFLAG_FLYING2;
 
     m_mover = this;
+    m_mover_in_queve = NULL;
 }
 
 void Player::SendInitialPacketsAfterAddToMap()

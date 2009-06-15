@@ -386,9 +386,12 @@ void Vehicle::AddPassenger(Unit *unit, int8 seatId, bool force)
             GetMotionMaster()->MoveIdle();
             StopMoving();
             SetCharmerGUID(unit->GetGUID());
-            unit->SetCharm(this);
+            unit->SetUInt64Value(UNIT_FIELD_CHARM, GetGUID());
             if(unit->GetTypeId() == TYPEID_PLAYER)
+            {
+                ((Player*)unit)->SetMoverInQueve(this);
                 ((Player*)unit)->SetClientControl(this, 1);
+            }
         }
 
         SpellClickInfoMapBounds clickPair = objmgr.GetSpellClickInfoMapBounds(GetEntry());
@@ -446,6 +449,7 @@ void Vehicle::RemovePassenger(Unit *unit)
                 if(unit->GetTypeId() == TYPEID_PLAYER)
                 {
                     ((Player*)unit)->SetClientControl(unit, 1);
+                    ((Player*)unit)->SetMoverInQueve(NULL);
                     WorldPacket data(SMSG_PET_SPELLS, 8+4);
                     data << uint64(0);
                     data << uint32(0);
