@@ -95,19 +95,19 @@ bool Vehicle::Create(uint32 guidlow, Map *map, uint32 phaseMask, uint32 Entry, u
     if(!UpdateEntry(Entry, team, data))
         return false;
 
-	if(!vehicleId)
-	{
-		CreatureDataAddon const *cainfo = GetCreatureAddon();
-		if(!cainfo)
-			return false;
-		vehicleId = cainfo->vehicle_id;
-	}
+    if(!vehicleId)
+    {
+        CreatureDataAddon const *cainfo = GetCreatureAddon();
+        if(!cainfo)
+            return false;
+        vehicleId = cainfo->vehicle_id;
+    }
     if(!SetVehicleId(vehicleId))
         return false;
 
-	LoadCreaturesAddon();
+    LoadCreaturesAddon();
 
-	m_regenHealth = false;
+    m_regenHealth = false;
     m_creation_time = getMSTime();
 
     SetFloatValue(UNIT_FIELD_HOVERHEIGHT, 1.0f);
@@ -543,7 +543,7 @@ void Vehicle::BuildVehicleActionBar(Player *plr) const
 
     for(uint32 i = 0; i < MAX_VEHICLE_SPELLS; ++i)
     {
-		data << uint16(m_VehicleData ? m_VehicleData->v_spells[i] : NULL);
+        data << uint16(m_VehicleData ? m_VehicleData->v_spells[i] : NULL);
         data << uint8(0) << uint8(i+8);
     }
 
