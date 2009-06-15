@@ -390,23 +390,24 @@ void Vehicle::AddPassenger(Unit *unit, int8 seatId, bool force)
             if(unit->GetTypeId() == TYPEID_PLAYER)
                 ((Player*)unit)->SetClientControl(this, 1);
         }
+
+        SpellClickInfoMapBounds clickPair = objmgr.GetSpellClickInfoMapBounds(GetEntry());
+        for(SpellClickInfoMap::const_iterator itr = clickPair.first; itr != clickPair.second; ++itr)
+        {
+            if (unit->GetTypeId() == TYPEID_UNIT || itr->second.IsFitToRequirements((Player*)unit))
+            {
+                Unit *caster = (itr->second.castFlags & 0x1) ? unit : this;
+                Unit *target = (itr->second.castFlags & 0x2) ? unit : this;
+
+                caster->CastSpell(target, itr->second.spellId, true);
+            }
+        }
         if(unit->GetTypeId() == TYPEID_PLAYER)
         {
             // it should be added only on rider enter?
             if(((Player*)unit)->GetGroup())
                 ((Player*)unit)->SetGroupUpdateFlag(GROUP_UPDATE_VEHICLE);
 
-            SpellClickInfoMap const& map = objmgr.mSpellClickInfoMap;
-            for(SpellClickInfoMap::const_iterator itr = map.lower_bound(GetEntry()); itr != map.upper_bound(GetEntry()); ++itr)
-            {
-                if(itr->second.questId == 0 || ((Player*)unit)->GetQuestStatus(itr->second.questId) == QUEST_STATUS_INCOMPLETE)
-                {
-                    Unit *caster = (itr->second.castFlags & 0x1) ? unit : this;
-                    Unit *target = (itr->second.castFlags & 0x2) ? unit : this;
-
-                    caster->CastSpell(target, itr->second.spellId, true);
-                }
-            }
             ((Player*)unit)->SetFarSightGUID(GetGUID());
 
             BuildVehicleActionBar((Player*)unit);

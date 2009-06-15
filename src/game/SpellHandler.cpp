@@ -527,9 +527,11 @@ void WorldSession::HandleSpellClick( WorldPacket & recv_data )
     if(_player->GetVehicleGUID())
         return;
 
-    Creature *unit = ObjectAccessor::GetCreatureOrPetOrVehicle(*_player, guid);
+    if (_player->isInCombat())                              // client prevent click and set different icon at combat state
+        return;
 
-    if(!unit)
+    Creature *unit = ObjectAccessor::GetCreatureOrPetOrVehicle(*_player, guid);
+    if (!unit || unit->isInCombat())                        // client prevent click and set different icon at combat state
         return;
 
     if(!unit->isAlive())
@@ -541,7 +543,6 @@ void WorldSession::HandleSpellClick( WorldPacket & recv_data )
     if(unit->isPet())
         return;
 
-    // dont allow hacking
     if(!unit->HasFlag(UNIT_NPC_FLAGS,UNIT_NPC_FLAG_SPELLCLICK))
         return;
 
