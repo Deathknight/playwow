@@ -19284,54 +19284,34 @@ void Player::SendEnterVehicle(Vehicle *vehicle)
     // with vehicle, ONLY my vehicle will be passenger on that transport
     // player ----> vehicle ----> zeppelin
 
-    // NOTE : NOT USED ANYMORE! on 3.1.3
-    // use SMSG_MONSTER_MOVE_TRANSPORT (its sent to everybody - sendmessagetoset)
-    /*
-        player pack guid
-        vehicle pack guid
-        uint8 seat
-        // here like in SMSG_MONSTER_MOVE
-        uint8 0
-        float x
-        float y
-        float z
-        uint32 time
-        uint8 type = 4
-        float 0 (facing angle)
-        moveflags (MOVEMENTFLAG_CAN_FLY)
-        uint32 0 (movetime)
-        uint8 1 (num of wp)
-
-        float trans x
-        float trans y
-        float trans z
-    */
-    WorldPacket data(SMSG_BREAK_TARGET, 8);
+    /*WorldPacket data(SMSG_BREAK_TARGET, 8);
     data.append(vehicle->GetPackGUID());
-    GetSession()->SendPacket(&data);
+    GetSession()->SendPacket(&data);*/
 
-    uint32 veh_time = getMSTimeDiff(m_SeatData.c_time,getMSTime());
-    data.Initialize(MSG_MOVE_TELEPORT_ACK, 30);
+    WorldPacket data(SMSG_MONSTER_MOVE_TRANSPORT, 60);
+    data.append(vehicle->GetPackGUID());
     data.append(GetPackGUID());
-    data << uint32(0);                                      // counter?
-    data << uint32(MOVEMENTFLAG_ONTRANSPORT);               // transport
-    data << uint16(0);                                      // special flags
-    data << uint32(getMSTime());                            // time
-    data << vehicle->GetPositionX();                        // x
-    data << vehicle->GetPositionY();                        // y
-    data << vehicle->GetPositionZ();                        // z
-    data << vehicle->GetOrientation();                      // o
-    // transport part
-    data << float(m_SeatData.OffsetX);                      // transport offsetX
-    data << float(m_SeatData.OffsetY);                      // transport offsetY
-    data << float(m_SeatData.OffsetZ);                      // transport offsetZ
-    data << float(m_SeatData.Orientation);                  // transport orientation
-    data << uint32(veh_time);                               // transport time
-    data << uint8(m_SeatData.seat);                         // seat
-    data << uint8(0);                                       // seat
-    // end of transport part
-    data << uint32(0);                                      // fall time
-    GetSession()->SendPacket(&data);
+    data << uint8(m_SeatData.seat);
+    data << uint8(0);                                       // new in 3.1
+    data << GetPositionX() << GetPositionY() << GetPositionZ();
+    data << uint32(getMSTime());
+
+    data << uint8(4);                                       // unknown
+    data << float(0);                                       // facing angle
+
+    data << uint32(MOVEMENTFLAG_CAN_FLY);
+
+    data << uint32(0);                                      // Time in between points
+    data << uint32(1);                                      // 1 single waypoint
+    data << m_SeatData.OffsetX;
+    data << m_SeatData.OffsetY;
+    data << m_SeatData.OffsetZ;
+    SendMessageToSet(&data, true);
+
+    /*data.Initialize(SMSG_UNKNOWN_1191, 12);
+    data << uint64(GetGUID());
+    data << uint64(vehicle->GetVehicleId());
+    SendMessageToSet(&data, true);*/
 }
 
 void Player::SendExitVehicle()

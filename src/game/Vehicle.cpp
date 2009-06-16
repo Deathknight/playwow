@@ -583,4 +583,9 @@ void Vehicle::BuildVehicleActionBar(Player *plr) const
     }
 
     plr->GetSession()->SendPacket(&data);
+
+    data.Initialize(SMSG_PET_GUIDS, 12);
+    data << uint32(1);                                        // count
+    data << uint64(GetGUID());
+    plr->GetSession()->SendPacket(&data);
 }

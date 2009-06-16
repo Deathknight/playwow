@@ -7925,7 +7925,7 @@ void ObjectMgr::LoadVehicleData()
 {
     mVehicleData.clear();
 
-    QueryResult *result = WorldDatabase.Query("SELECT vehicle_id, flags, Spell1, Spell2, Spell3, Spell4, Spell5, Spell6, Spell7, Spell8, Spell9, Spell10, req_aura FROM vehicle_data");
+    QueryResult *result = WorldDatabase.Query("SELECT entry, flags, Spell1, Spell2, Spell3, Spell4, Spell5, Spell6, Spell7, Spell8, Spell9, Spell10, req_aura FROM vehicle_data");
     if(!result)
     {
         barGoLink bar( 1 );
