@@ -221,7 +221,7 @@ void WorldSession::HandleMovementOpcodes( WorldPacket & recv_data )
 
     if(!(movementInfo.flags & MOVEMENTFLAG_ONTRANSPORT) && _player->GetVehicleGUID())
     {
-        if(mover->GetGUID() != _player->GetCharmGUID())
+        if(mover->GetGUID() == _player->GetGUID())
         {
             return;
         }

@@ -427,6 +427,8 @@ void Vehicle::AddPassenger(Unit *unit, int8 seatId, bool force)
             SendMessageToSet(&data2,false);
         }
 
+        if(GetVehicleFlags() & VF_NON_SELECTABLE)
+            SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
     }
     if(seat->second.vs_flags & SF_UNATTACKABLE)
         unit->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
@@ -462,6 +464,8 @@ void Vehicle::RemovePassenger(Unit *unit)
                 SetCharmerGUID(NULL);
                 setFaction(GetCreatureInfo()->faction_A);
             }
+            if(GetVehicleFlags() & VF_NON_SELECTABLE)
+                RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
             if(seat->second.vs_flags & SF_UNATTACKABLE)
                 unit->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
             // restore player control
