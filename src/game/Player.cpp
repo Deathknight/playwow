@@ -19310,8 +19310,34 @@ void Player::SendEnterVehicle(Vehicle *vehicle)
     // with vehicle, ONLY my vehicle will be passenger on that transport
     // player ----> vehicle ----> zeppelin
 
+    // NOTE : NOT USED ANYMORE! on 3.1.3
+    // use SMSG_MONSTER_MOVE_TRANSPORT (its sent to everybody - sendmessagetoset)
+    /*
+        player pack guid
+        vehicle pack guid
+        uint8 seat
+        // here like in SMSG_MONSTER_MOVE
+        uint8 0
+        float x
+        float y
+        float z
+        uint32 time
+        uint8 type = 4
+        float 0 (facing angle)
+        moveflags (MOVEMENTFLAG_CAN_FLY)
+        uint32 0 (movetime)
+        uint8 1 (num of wp)
+
+        float trans x
+        float trans y
+        float trans z
+    */
+    WorldPacket data(SMSG_BREAK_TARGET, 8);
+    data.append(vehicle->GetPackGUID());
+    GetSession()->SendPacket(&data);
+
     uint32 veh_time = getMSTimeDiff(m_SeatData.c_time,getMSTime());
-    WorldPacket data(MSG_MOVE_TELEPORT_ACK, 30);
+    data.Initialize(MSG_MOVE_TELEPORT_ACK, 30);
     data.append(GetPackGUID());
     data << uint32(0);                                      // counter?
     data << uint32(MOVEMENTFLAG_ONTRANSPORT);               // transport

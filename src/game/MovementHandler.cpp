@@ -219,6 +219,13 @@ void WorldSession::HandleMovementOpcodes( WorldPacket & recv_data )
     ReadMovementInfo(recv_data, &movementInfo);
     /*----------------*/
 
+    if(!(movementInfo.flags & MOVEMENTFLAG_ONTRANSPORT) && _player->GetVehicleGUID())
+    {
+        if(mover->GetGUID() != _player->GetCharmGUID())
+        {
+            return;
+        }
+    }
     // we sent a movement packet with MOVEMENTFLAG_ONTRANSPORT and we are on vehicle
     // this can be moving on vehicle or entering another transport (eg. boat)
     if((movementInfo.flags & MOVEMENTFLAG_ONTRANSPORT) && _player->GetVehicleGUID())
