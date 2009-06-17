@@ -139,6 +139,7 @@ bool Vehicle::SetVehicleId(uint32 vehicleid)
         m_VehicleData = VDStructure;
 
     InitSeats();
+    EmptySeatsCountChanged();
     return true;
 }
 
@@ -177,52 +178,47 @@ void Vehicle::ChangeSeatFlag(uint8 seat, uint8 flag)
         EmptySeatsCountChanged();
     }
 }
-bool Vehicle::FindFreeSeat(int8 *seatid, bool force)
+Vehicle* Vehicle::FindFreeSeat(int8 *seatid, bool force)
 {
     SeatMap::const_iterator i_seat = m_Seats.find(*seatid);
     if(i_seat == m_Seats.end())
         return GetFirstEmptySeat(seatid, force);
     if((i_seat->second.flags & (SEAT_FULL | SEAT_VEHICLE_FULL)) || (!force && (i_seat->second.vs_flags & SF_UNACCESSIBLE)))
         return GetNextEmptySeat(seatid, true, force);
-
-    return true;
+    if(i_seat->second.flags & SEAT_VEHICLE_FREE)
+    {
+        // this should never be NULL
+        if(Vehicle *v = (Vehicle*)i_seat->second.passenger)
+            return v->FindFreeSeat(seatid, force);
+        return NULL;
+    }
+    return this;
 }
 
-bool Vehicle::GetFirstEmptySeat(int8 *seatId, bool force)
+Vehicle* Vehicle::GetFirstEmptySeat(int8 *seatId, bool force)
 {
     for(SeatMap::iterator itr = m_Seats.begin(); itr != m_Seats.end(); ++itr)
     {
-        if(itr->second.flags & (SEAT_FREE | SEAT_VEHICLE_FREE))
+        if(itr->second.flags & SEAT_FREE)
         {
             if(!force && (itr->second.vs_flags & SF_UNACCESSIBLE))
                 continue;
 
             *seatId = itr->first;
-            return true;
+            return this;
         }
-    }
-
-    return false;
-}
-
-int8 Vehicle::GetEmptySeatsCount(bool force)
-{
-    int8 count = 0;
-    for(SeatMap::iterator itr = m_Seats.begin(); itr != m_Seats.end(); ++itr)
-   {
-        if(itr->second.flags & (SEAT_FREE | SEAT_VEHICLE_FREE))
+        else if(itr->second.flags & SEAT_VEHICLE_FREE)
         {
-            if(!force && (itr->second.vs_flags & SF_UNACCESSIBLE))
-                continue;
-
-            count++;
+            *seatId = itr->first;
+            if(Vehicle *v = (Vehicle*)itr->second.passenger)
+                return v->FindFreeSeat(seatId, force);
         }
     }
 
-    return count;
+    return NULL;
 }
 
-bool Vehicle::GetNextEmptySeat(int8 *seatId, bool next, bool force)
+Vehicle* Vehicle::GetNextEmptySeat(int8 *seatId, bool next, bool force)
 {
     SeatMap::const_iterator i_seat = m_Seats.find(*seatId);
     if(i_seat == m_Seats.end()) return GetFirstEmptySeat(seatId, force);
@@ -242,10 +238,34 @@ bool Vehicle::GetNextEmptySeat(int8 *seatId, bool next, bool force)
             --i_seat;
         }
         if(i_seat->first == *seatId)
-            return false;
+            return NULL;
     }
     *seatId = i_seat->first;
-    return true;
+    if(i_seat->second.flags & SEAT_VEHICLE_FREE)
+    {
+        if(Vehicle *v = (Vehicle*)i_seat->second.passenger)
+            return v->FindFreeSeat(seatId, force);
+        return NULL;
+    }
+
+    return this;
+}
+
+int8 Vehicle::GetEmptySeatsCount(bool force)
+{
+    int8 count = 0;
+    for(SeatMap::iterator itr = m_Seats.begin(); itr != m_Seats.end(); ++itr)
+   {
+        if(itr->second.flags & (SEAT_FREE | SEAT_VEHICLE_FREE))
+        {
+            if(!force && (itr->second.vs_flags & SF_UNACCESSIBLE))
+                continue;
+
+            count++;
+        }
+    }
+
+    return count;
 }
 
 void Vehicle::EmptySeatsCountChanged()
@@ -344,17 +364,6 @@ void Vehicle::AddPassenger(Unit *unit, int8 seatId, bool force)
     if(seat == m_Seats.end())
         return;
 
-    if(seat->second.flags & SEAT_VEHICLE_FREE)
-    {
-        // this should never be NULL, but..
-        if(Vehicle *v = (Vehicle*)seat->second.passenger)
-        {
-            int8 s_id = 0;
-            v->GetFirstEmptySeat(&s_id, force);
-            v->AddPassenger(unit, s_id, force);
-        }
-        return;
-    }
     unit->SetVehicleGUID(GetGUID());
 
     seat->second.passenger = unit;

@@ -11741,11 +11741,12 @@ void Unit::EnterVehicle(Vehicle *vehicle, int8 seat_id, bool force)
     RemoveSpellsCausingAura(SPELL_AURA_MOUNTED);
     // NOTE : shapeshift too?
 
-    VehicleEntry const *ve = sVehicleStore.LookupEntry(vehicle->GetVehicleId());
-    if(!ve)
+    Vehicle *v = vehicle->FindFreeSeat(&seat_id, force);
+    if(!v)
         return;
 
-    if(!vehicle->FindFreeSeat(&seat_id, force))
+    VehicleEntry const *ve = sVehicleStore.LookupEntry(v->GetVehicleId());
+    if(!ve)
         return;
 
     VehicleSeatEntry const *veSeat = sVehicleSeatStore.LookupEntry(ve->m_seatID[seat_id]);
@@ -11756,11 +11757,11 @@ void Unit::EnterVehicle(Vehicle *vehicle, int8 seat_id, bool force)
     m_SeatData.OffsetY = veSeat->m_attachmentOffsetY;                                                           // transport offsetY
     m_SeatData.OffsetZ = veSeat->m_attachmentOffsetZ;                                                           // transport offsetZ
     m_SeatData.Orientation = veSeat->m_passengerYaw;                                                            // NOTE : needs confirmation
-    m_SeatData.c_time = vehicle->GetCreationTime();                                                             // time pased from moment when it was created, confirmed
+    m_SeatData.c_time = v->GetCreationTime();                                                             // time pased from moment when it was created, confirmed
     m_SeatData.dbc_seat = veSeat->m_ID;
     m_SeatData.seat = seat_id;
     m_SeatData.s_flags = objmgr.GetSeatFlags(veSeat->m_ID);
-    m_SeatData.v_flags = vehicle->GetVehicleFlags();
+    m_SeatData.v_flags = v->GetVehicleFlags();
 
     addUnitState(UNIT_STAT_ON_VEHICLE);
     AddUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT | MOVEMENTFLAG_FLY_UNK1);
@@ -11770,13 +11771,34 @@ void Unit::EnterVehicle(Vehicle *vehicle, int8 seat_id, bool force)
     if(Pet *pet = GetPet())
         pet->Remove(PET_SAVE_AS_CURRENT);
 
+    // this will be obsolete soon
     if(GetTypeId() == TYPEID_PLAYER)
-        ((Player*)this)->SendEnterVehicle(vehicle);
+        ((Player*)this)->SendEnterVehicle(v);
 
-    vehicle->AddPassenger(this, seat_id, force);
+    WorldPacket data(SMSG_MONSTER_MOVE_TRANSPORT, 60);
+    data.append(GetPackGUID());
+    data.append(v->GetPackGUID());
+    data << uint8(m_SeatData.seat);
+    data << uint8(0);                                       // new in 3.1
+    data << v->GetPositionX() << v->GetPositionY() << v->GetPositionZ();
+    data << uint32(getMSTime());
+
+    data << uint8(4);                                       // unknown
+    data << float(0);                                       // facing angle
+
+    data << uint32(MOVEMENTFLAG_CAN_FLY);
+
+    data << uint32(0);                                      // Time in between points
+    data << uint32(1);                                      // 1 single waypoint
+    data << m_SeatData.OffsetX;
+    data << m_SeatData.OffsetY;
+    data << m_SeatData.OffsetZ;
+    SendMessageToSet(&data, true);
+
+    v->AddPassenger(this, seat_id, force);
 
     if(GetTypeId() == TYPEID_UNIT)
-		BuildVehicleInfo();
+        BuildVehicleInfo();
 }
 
 void Unit::ExitVehicle()
@@ -11802,8 +11824,13 @@ void Unit::ExitVehicle()
 
         if(GetTypeId() == TYPEID_PLAYER)
         {
+            // player will send necessary packets by its own
             ((Player*)this)->SendExitVehicle();
         }
+        // but in case he was removed by force (at logout, etc)
+        WorldPacket data;
+        BuildHeartBeatMsg(&data);
+        SendMessageToSet(&data,false);
     }
 }
 

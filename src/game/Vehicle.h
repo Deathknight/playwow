@@ -64,9 +64,9 @@ class Vehicle : public Creature
         void InitSeats();
 
         void ChangeSeatFlag(uint8 seat, uint8 flag);
-        bool FindFreeSeat(int8 *seatid, bool force = true);
-        bool GetNextEmptySeat(int8 *seatId, bool next = true, bool force = true);
-        bool GetFirstEmptySeat(int8 *seatId, bool force = true);
+        Vehicle* FindFreeSeat(int8 *seatid, bool force = true);
+        Vehicle* GetNextEmptySeat(int8 *seatId, bool next = true, bool force = true);
+        Vehicle* GetFirstEmptySeat(int8 *seatId, bool force = true);
         int8 GetEmptySeatsCount(bool force = true);
         void EmptySeatsCountChanged();
         int8 GetTotalSeatsCount() { return m_Seats.size(); }

@@ -19275,7 +19275,7 @@ void Player::InitGlyphsForLevel()
 
 void Player::SendEnterVehicle(Vehicle *vehicle)
 {
-    if(m_transport)               // if we were on a transport, leave
+    if(m_transport)                                         // if we were on a transport, leave
     {
         m_transport->RemovePassenger(this);
         m_transport = NULL;
@@ -19284,33 +19284,13 @@ void Player::SendEnterVehicle(Vehicle *vehicle)
     // with vehicle, ONLY my vehicle will be passenger on that transport
     // player ----> vehicle ----> zeppelin
 
-    /*WorldPacket data(SMSG_BREAK_TARGET, 8);
+    WorldPacket data(SMSG_BREAK_TARGET, 8);
     data.append(vehicle->GetPackGUID());
-    GetSession()->SendPacket(&data);*/
-
-    WorldPacket data(SMSG_MONSTER_MOVE_TRANSPORT, 60);
-    data.append(GetPackGUID());
-    data.append(vehicle->GetPackGUID());
-    data << uint8(m_SeatData.seat);
-    data << uint8(0);                                       // new in 3.1
-    data << vehicle->GetPositionX() << vehicle->GetPositionY() << vehicle->GetPositionZ();
-    data << uint32(getMSTime());
-
-    data << uint8(4);                                       // unknown
-    data << float(0);                                       // facing angle
-
-    data << uint32(MOVEMENTFLAG_CAN_FLY);
-
-    data << uint32(0);                                      // Time in between points
-    data << uint32(1);                                      // 1 single waypoint
-    data << m_SeatData.OffsetX;
-    data << m_SeatData.OffsetY;
-    data << m_SeatData.OffsetZ;
-    SendMessageToSet(&data, true);
+    GetSession()->SendPacket(&data);
 
     /*data.Initialize(SMSG_UNKNOWN_1191, 12);
     data << uint64(GetGUID());
-    data << uint64(vehicle->GetVehicleId());
+    data << uint64(vehicle->GetVehicleId());                      // not sure
     SendMessageToSet(&data, true);*/
 }
 

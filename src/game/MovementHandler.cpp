@@ -549,10 +549,11 @@ void WorldSession::HandleRequestVehiclePrevSeat(WorldPacket &recv_data)
     if(Vehicle *vehicle = ObjectAccessor::GetVehicle(vehicleGUID))
     {
         int8 prv_seat = _player->m_SeatData.seat;
-        if(!vehicle->GetNextEmptySeat(&prv_seat, false, false))
-            return;
-        vehicle->RemovePassenger(_player);
-        _player->EnterVehicle(vehicle, prv_seat, false);
+        if(Vehicle *v = vehicle->GetNextEmptySeat(&prv_seat, false, false))
+        {
+            vehicle->RemovePassenger(_player);
+            _player->EnterVehicle(v, prv_seat, false);
+        }
     }
 }
 
@@ -569,10 +570,11 @@ void WorldSession::HandleRequestVehicleNextSeat(WorldPacket &recv_data)
     if(Vehicle *vehicle = ObjectAccessor::GetVehicle(vehicleGUID))
     {
         int8 nxt_seat = _player->m_SeatData.seat;
-        if(!vehicle->GetNextEmptySeat(&nxt_seat, true, false))
-            return;
-        vehicle->RemovePassenger(_player);
-        _player->EnterVehicle(vehicle, nxt_seat, false);
+        if(Vehicle *v = vehicle->GetNextEmptySeat(&nxt_seat, true, false))
+        {
+            vehicle->RemovePassenger(_player);
+            _player->EnterVehicle(v, nxt_seat, false);
+        }
     }
 }
 
@@ -589,12 +591,12 @@ void WorldSession::HandleRequestVehicleSwitchSeat(WorldPacket &recv_data)
     if(Vehicle *vehicle = ObjectAccessor::GetVehicle(vehicleGUID))
     {
         CHECK_PACKET_SIZE(recv_data, recv_data.rpos()+1);
-        uint64 guid;
+        uint64 guid = 0;
         if(!recv_data.readPackGUID(guid))
             return;
 
         CHECK_PACKET_SIZE(recv_data, recv_data.rpos()+1);
-        int8 seatId;
+        int8 seatId = 0;
         recv_data >> seatId;
 
         if(guid)
@@ -606,19 +608,20 @@ void WorldSession::HandleRequestVehicleSwitchSeat(WorldPacket &recv_data)
                     if(!_player->IsWithinDistInMap(veh, 10))
                         return;
 
-                    if(veh->FindFreeSeat(&seatId, false))
+                    if(Vehicle *v = veh->FindFreeSeat(&seatId, false))
                     {
                         vehicle->RemovePassenger(_player);
-                        _player->EnterVehicle(veh, seatId, false);
+                        _player->EnterVehicle(v, seatId, false);
                     }
                 }
                 return;
             }
         }
-        if(!vehicle->FindFreeSeat(&seatId, false))
-            return;
-        vehicle->RemovePassenger(_player);
-        _player->EnterVehicle(vehicle, seatId, false);
+        if(Vehicle *v = vehicle->FindFreeSeat(&seatId, false))
+        {
+            vehicle->RemovePassenger(_player);
+            _player->EnterVehicle(v, seatId, false);
+        }
     }
 }
 
@@ -639,7 +642,7 @@ void WorldSession::HandleChangeSeatsOnControlledVehicle(WorldPacket &recv_data)
         //_player->m_movementInfo = mi;
 
         CHECK_PACKET_SIZE(recv_data, recv_data.rpos()+1);
-        uint64 guid;
+        uint64 guid = 0;
         if(!recv_data.readPackGUID(guid))
             return;
 
@@ -656,19 +659,20 @@ void WorldSession::HandleChangeSeatsOnControlledVehicle(WorldPacket &recv_data)
                     if(!_player->IsWithinDistInMap(veh, 10))
                         return;
 
-                    if(veh->FindFreeSeat(&seatId, false))
+                    if(Vehicle *v = veh->FindFreeSeat(&seatId, false))
                     {
                         vehicle->RemovePassenger(_player);
-                        _player->EnterVehicle(veh, seatId, false);
+                        _player->EnterVehicle(v, seatId, false);
                     }
                 }
                 return;
             }
         }
-        if(!vehicle->FindFreeSeat(&seatId, false))
-            return;
-        vehicle->RemovePassenger(_player);
-        _player->EnterVehicle(vehicle, seatId, false);
+        if(Vehicle *v = vehicle->FindFreeSeat(&seatId, false))
+        {
+            vehicle->RemovePassenger(_player);
+            _player->EnterVehicle(v, seatId, false);
+        }
     }
 }
 
