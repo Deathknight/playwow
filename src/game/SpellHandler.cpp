@@ -524,9 +524,6 @@ void WorldSession::HandleSpellClick( WorldPacket & recv_data )
     uint64 guid;
     recv_data >> guid;
 
-    if(_player->GetVehicleGUID())
-        return;
-
     if (_player->isInCombat())                              // client prevent click and set different icon at combat state
         return;
 
@@ -534,40 +531,63 @@ void WorldSession::HandleSpellClick( WorldPacket & recv_data )
     if (!unit || unit->isInCombat())                        // client prevent click and set different icon at combat state
         return;
 
-    if(!unit->isAlive())
-        return;
-
     if(!_player->IsWithinDistInMap(unit, 10))
         return;
 
-    if(unit->isPet())
-        return;
-
+    // cheater?
     if(!unit->HasFlag(UNIT_NPC_FLAGS,UNIT_NPC_FLAG_SPELLCLICK))
         return;
 
-    // create vehicle if no one present and kill the original creature to avoid double, triple etc spawns
-    if(!unit->isVehicle())
+    uint32 vehicleId = 0;
+    CreatureDataAddon const *cainfo = unit->GetCreatureAddon();
+    if(cainfo)
+        vehicleId = cainfo->vehicle_id;
+
+    // handled other (hacky) way to avoid overwriting auras
+    if(vehicleId)
     {
-        Vehicle *v = _player->SummonVehicle(unit->GetEntry(), unit->GetPositionX(), unit->GetPositionY(), unit->GetPositionZ(), unit->GetOrientation());
-        if(!v)
+        if(!unit->isAlive())
             return;
 
-        if(v->GetVehicleFlags() & VF_DESPAWN_NPC)
-        {
-            v->SetSpawnDuration(unit->GetRespawnDelay()*IN_MILISECONDS);
-            unit->setDeathState(JUST_DIED);
-            unit->RemoveCorpse();
-            unit->SetHealth(0);
-        }
-        unit = v;
-    }
+        if(_player->GetVehicleGUID())
+            return;
 
-    if(((Vehicle*)unit)->GetVehicleData())
-        if(uint32 r_aura = ((Vehicle*)unit)->GetVehicleData()->req_aura)
-            if(!_player->HasAura(r_aura))
+        // create vehicle if no one present and kill the original creature to avoid double, triple etc spawns
+        if(!unit->isVehicle())
+        {
+            Vehicle *v = _player->SummonVehicle(unit->GetEntry(), unit->GetPositionX(), unit->GetPositionY(), unit->GetPositionZ(), unit->GetOrientation(), vehicleId);
+            if(!v)
                 return;
 
-    _player->EnterVehicle((Vehicle*)unit, 0);
-}
+            if(v->GetVehicleFlags() & VF_DESPAWN_NPC)
+            {
+                v->SetSpawnDuration(unit->GetRespawnDelay()*IN_MILISECONDS);
+                unit->setDeathState(JUST_DIED);
+                unit->RemoveCorpse();
+                unit->SetHealth(0);
+            }
+            unit = v;
+        }
 
+        if(((Vehicle*)unit)->GetVehicleData())
+            if(uint32 r_aura = ((Vehicle*)unit)->GetVehicleData()->req_aura)
+                if(!_player->HasAura(r_aura))
+                    return;
+
+        _player->EnterVehicle((Vehicle*)unit, 0);
+    }
+    else
+    {
+        SpellClickInfoMapBounds clickPair = objmgr.GetSpellClickInfoMapBounds(unit->GetEntry());
+        for(SpellClickInfoMap::const_iterator itr = clickPair.first; itr != clickPair.second; ++itr)
+        {
+            if (itr->second.IsFitToRequirements(_player))
+            {
+                Unit *caster = (itr->second.castFlags & 0x1) ? (Unit*)_player : (Unit*)unit;
+                Unit *target = (itr->second.castFlags & 0x2) ? (Unit*)_player : (Unit*)unit;
+     
+                caster->CastSpell(target, itr->second.spellId, true);
+            }
+        }
+    }
+}
