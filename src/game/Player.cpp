@@ -19293,7 +19293,7 @@ void Player::SendEnterVehicle(Vehicle *vehicle)
     data.append(vehicle->GetPackGUID());
     data << uint8(m_SeatData.seat);
     data << uint8(0);                                       // new in 3.1
-    data << GetPositionX() << GetPositionY() << GetPositionZ();
+    data << vehicle->GetPositionX() << vehicle->GetPositionY() << vehicle->GetPositionZ();
     data << uint32(getMSTime());
 
     data << uint8(4);                                       // unknown

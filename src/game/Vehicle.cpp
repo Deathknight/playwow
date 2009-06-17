@@ -452,9 +452,8 @@ void Vehicle::RemovePassenger(Unit *unit)
                 {
                     ((Player*)unit)->SetClientControl(unit, 1);
                     ((Player*)unit)->SetMoverInQueve(NULL);
-                    WorldPacket data(SMSG_PET_SPELLS, 8+4);
+                    WorldPacket data(SMSG_PET_SPELLS, 8);
                     data << uint64(0);
-                    data << uint32(0);
                     ((Player*)unit)->GetSession()->SendPacket(&data);
 
                     if(((Player*)unit)->GetGroup())
@@ -544,16 +543,15 @@ bool Vehicle::HasSpell(uint32 spell) const
 
 void Vehicle::BuildVehicleActionBar(Player *plr) const
 {
-    WorldPacket data(SMSG_PET_SPELLS, 8+4+4+4+4*10+1+1);
+    WorldPacket data(SMSG_PET_SPELLS, 8+2+4+4+4*10+1+1);
     data << uint64(GetGUID());
-    data << uint32(0x00000000);                     // creature family, not used in vehicles
+    data << uint16(0x00000000);                     // creature family, not used in vehicles
     data << uint32(0x00000000);                     // unk
     data << uint32(0x00000101);                     // react state
 
     for(uint32 i = 0; i < MAX_VEHICLE_SPELLS; ++i)
     {
-        data << uint16(m_VehicleData ? m_VehicleData->v_spells[i] : NULL);
-        data << uint8(0) << uint8(i+8);
+        data << uint16(m_VehicleData ? m_VehicleData->v_spells[i] : NULL) << uint8(0) << uint8(i+8);
     }
 
     data << uint8(0);                               //aditional spells in spellbook, not used in vehicles
