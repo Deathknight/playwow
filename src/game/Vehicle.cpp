@@ -393,7 +393,6 @@ void Vehicle::AddPassenger(Unit *unit, int8 seatId, bool force)
         {
             GetMotionMaster()->Clear(false);
             GetMotionMaster()->MoveIdle();
-            StopMoving();
             SetCharmerGUID(unit->GetGUID());
             unit->SetUInt64Value(UNIT_FIELD_CHARM, GetGUID());
             if(unit->GetTypeId() == TYPEID_PLAYER)

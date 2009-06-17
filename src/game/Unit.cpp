@@ -7263,6 +7263,14 @@ bool Unit::Attack(Unit *victim, bool meleeAttack)
     if(GetTypeId()==TYPEID_PLAYER && IsMounted())
         return false;
 
+    // player (also npc?) cannot attack on vehicle
+    if(GetTypeId()==TYPEID_PLAYER && GetVehicleGUID())
+        return false;
+
+    // player (also npc?) cannot attack on vehicle
+    if(GetTypeId()==TYPEID_UNIT && ((Creature*)this)->isVehicle() && GetCharmerGUID())
+        return false;
+
     // nobody can attack GM in GM-mode
     if(victim->GetTypeId()==TYPEID_PLAYER)
     {
@@ -11091,6 +11099,10 @@ void Unit::SetFeared(bool apply, uint64 casterGUID, uint32 spellID, uint32 time)
 
     if (GetTypeId() == TYPEID_PLAYER && !GetVehicleGUID())
         ((Player*)this)->SetClientControl(this, !apply);
+
+    if (Unit* owner = GetCharmer())
+        if (owner->GetTypeId() == TYPEID_PLAYER)
+            ((Player*)owner)->SetClientControl(this, !apply);
 }
 
 void Unit::SetConfused(bool apply, uint64 casterGUID, uint32 spellID)
@@ -11119,6 +11131,10 @@ void Unit::SetConfused(bool apply, uint64 casterGUID, uint32 spellID)
 
     if(GetTypeId() == TYPEID_PLAYER && !GetVehicleGUID())
         ((Player*)this)->SetClientControl(this, !apply);
+
+    if (Unit* owner = GetCharmer())
+        if (owner->GetTypeId() == TYPEID_PLAYER)
+            ((Player*)owner)->SetClientControl(this, !apply);
 }
 
 bool Unit::IsSitState() const
