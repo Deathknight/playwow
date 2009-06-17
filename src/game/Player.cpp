@@ -19289,8 +19289,8 @@ void Player::SendEnterVehicle(Vehicle *vehicle)
     GetSession()->SendPacket(&data);*/
 
     WorldPacket data(SMSG_MONSTER_MOVE_TRANSPORT, 60);
-    data.append(vehicle->GetPackGUID());
     data.append(GetPackGUID());
+    data.append(vehicle->GetPackGUID());
     data << uint8(m_SeatData.seat);
     data << uint8(0);                                       // new in 3.1
     data << GetPositionX() << GetPositionY() << GetPositionZ();
