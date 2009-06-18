@@ -11818,8 +11818,8 @@ void Unit::EnterVehicle(Vehicle *vehicle, int8 seat_id, bool force)
 
     v->AddPassenger(this, seat_id, force);
 
-    if(GetTypeId() == TYPEID_UNIT)
-        BuildVehicleInfo();
+    //if(GetTypeId() == TYPEID_UNIT)
+        //BuildVehicleInfo();
 }
 
 void Unit::ExitVehicle()

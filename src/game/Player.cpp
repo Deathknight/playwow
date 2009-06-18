@@ -18021,7 +18021,6 @@ void Player::SendInitialPacketsAfterAddToMap()
 
     if(GetVehicleGUID())
     {
-        BuildVehicleInfo();
         WorldPacket data3(SMSG_FORCE_MOVE_ROOT, 10);
         data3.append(GetPackGUID());
         data3 << (uint32)((m_SeatData.s_flags & SF_CAN_CAST) ? 2 : 0);
