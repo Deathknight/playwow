@@ -22,6 +22,7 @@
 #include "ObjectDefines.h"
 #include "Creature.h"
 #include "Unit.h"
+#include "ObjectMgr.h"
 
 struct VehicleSeat
 {
