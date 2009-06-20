@@ -18293,7 +18293,10 @@ void Player::SendAurasForTarget(Unit *target)
 
                     if(!(auraFlags & AFLAG_NOT_CASTER))
                     {
-                        data << uint8(0);                   // packed GUID of someone (caster?)
+                        if(aura->GetCaster())
+                            data.append(aura->GetCaster()->GetPackGUID());
+                        else
+                            data << uint8(0);
                     }
 
                     if(auraFlags & AFLAG_DURATION)          // include aura duration
@@ -19291,27 +19294,6 @@ void Player::SendEnterVehicle(Vehicle *vehicle)
     data << uint64(GetGUID());
     data << uint64(vehicle->GetVehicleId());                      // not sure
     SendMessageToSet(&data, true);*/
-}
-
-void Player::SendExitVehicle()
-{
-    WorldPacket data(MSG_MOVE_TELEPORT_ACK, 30);
-    data.append(GetPackGUID());
-    data << uint32(0);                                      // counter?
-    data << uint32(MOVEMENTFLAG_FLY_UNK1);                  // fly unk
-    data << uint16(0x40);                                   // special flags
-    data << uint32(getMSTime());                            // time
-    data << GetPositionX();                                 // x
-    data << GetPositionY();                                 // y
-    data << GetPositionZ()+5.0f;                            // z
-    data << GetOrientation();                               // o
-    data << uint32(0);                                      // fall time
-    GetSession()->SendPacket(&data);
-
-    ResummonPetTemporaryUnSummonedIfAny();
-
-    // maybe called at dummy aura remove?
-    // CastSpell(this, 45472, true);                           // Parachute
 }
 
 bool Player::isTotalImmune()

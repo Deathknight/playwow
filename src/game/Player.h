@@ -1955,7 +1955,6 @@ class MANGOS_DLL_SPEC Player : public Unit
 
         // vehicle system
         void SendEnterVehicle(Vehicle *vehicle);
-        void SendExitVehicle();
 
         uint64 GetFarSight() const { return GetUInt64Value(PLAYER_FARSIGHT); }
         void SetFarSightGUID(uint64 guid) { SetUInt64Value(PLAYER_FARSIGHT, guid); }

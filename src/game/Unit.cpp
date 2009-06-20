@@ -11845,61 +11845,55 @@ void Unit::ExitVehicle()
 
         if(GetTypeId() == TYPEID_PLAYER)
         {
-            // player will send necessary packets by its own
-            ((Player*)this)->SendExitVehicle();
+            ((Player*)this)->ResummonPetTemporaryUnSummonedIfAny();
         }
-        // but in case he was removed by force (at logout, etc)
-        WorldPacket data;
-        BuildHeartBeatMsg(&data);
-        SendMessageToSet(&data,false);
+
+        SendMonsterMove(GetPositionX(), GetPositionY(), GetPositionZ(), 0, MONSTER_MOVE_TELEPORT, 0);
     }
 }
 
 void Unit::BuildVehicleInfo(Unit *target)
 {
-    Unit *passenger = target;
-    if(!passenger)
-        passenger = this;
-
-    if(!passenger->GetVehicleGUID())
+    if(!target)
         return;
 
-    passenger->AddUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT | MOVEMENTFLAG_FLY_UNK1);
-    uint32 veh_time = getMSTimeDiff(passenger->m_SeatData.c_time,getMSTime());
+    if(!target->GetVehicleGUID())
+        return;
+
+    target->AddUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT | MOVEMENTFLAG_FLY_UNK1);
+    uint32 veh_time = getMSTimeDiff(target->m_SeatData.c_time,getMSTime());
 
     WorldPacket data(MSG_MOVE_HEARTBEAT, 100);
-    data.append(passenger->GetPackGUID());
-    data << uint32(passenger->GetUnitMovementFlags());
+    data.append(target->GetPackGUID());
+    data << uint32(target->GetUnitMovementFlags());
     data << uint16(0);
     data << uint32(getMSTime());
-    data << float(passenger->GetPositionX());
-    data << float(passenger->GetPositionY());
-    data << float(passenger->GetPositionZ());
-    data << float(passenger->GetOrientation());
-    data << uint64(passenger->GetVehicleGUID());
-    data << float(passenger->m_SeatData.OffsetX);
-    data << float(passenger->m_SeatData.OffsetY);
-    data << float(passenger->m_SeatData.OffsetZ);
-    data << float(passenger->m_SeatData.Orientation);
+    data << float(target->GetPositionX());
+    data << float(target->GetPositionY());
+    data << float(target->GetPositionZ());
+    data << float(target->GetOrientation());
+    data << uint64(target->GetVehicleGUID());
+    data << float(target->m_SeatData.OffsetX);
+    data << float(target->m_SeatData.OffsetY);
+    data << float(target->m_SeatData.OffsetZ);
+    data << float(target->m_SeatData.Orientation);
     data << uint32(veh_time);
-    data << uint8 (passenger->m_SeatData.seat);
+    data << uint8 (target->m_SeatData.seat);
     // required to avoid client crash
-    if(passenger->GetUnitMovementFlags() & (MOVEMENTFLAG_SWIMMING | MOVEMENTFLAG_FLYING2))
+    if(target->GetUnitMovementFlags() & (MOVEMENTFLAG_SWIMMING | MOVEMENTFLAG_FLYING2))
         data << float(0);
     data << uint32(0);
-    if(passenger->GetUnitMovementFlags() & MOVEMENTFLAG_JUMPING)
+    if(target->GetUnitMovementFlags() & MOVEMENTFLAG_JUMPING)
     {
         data << float(0);
         data << float(0);
         data << float(0);
         data << float(0);
     }
-    if(passenger->GetUnitMovementFlags() & MOVEMENTFLAG_SPLINE)
+    if(target->GetUnitMovementFlags() & MOVEMENTFLAG_SPLINE)
         data << float(0);
 
-    if(!target)
-        SendMessageToSet(&data,false);
-    else if(GetTypeId() == TYPEID_PLAYER)
+    if(GetTypeId() == TYPEID_PLAYER)
         ((Player*)this)->GetSession()->SendPacket(&data);
 }
 
