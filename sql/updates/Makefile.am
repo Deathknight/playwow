@@ -230,6 +230,8 @@ pkgdata_DATA = \
 	8050_02_mangos_spell_bonus_data.sql \
 	8053_01_mangos_command.sql \
 	8060_01_mangos_spell_pet_auras.sql \
+	8064_01_mangos_spell_chain.sql \
+	8065_01_mangos_spell_proc_event.sql \
 	README
 
 ## Additional files to include when running 'make dist'
@@ -440,4 +442,6 @@ EXTRA_DIST = \
 	8050_02_mangos_spell_bonus_data.sql \
 	8053_01_mangos_command.sql \
 	8060_01_mangos_spell_pet_auras.sql \
+	8064_01_mangos_spell_chain.sql \
+	8065_01_mangos_spell_proc_event.sql \
 	README
