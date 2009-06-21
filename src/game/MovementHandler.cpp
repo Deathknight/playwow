@@ -243,6 +243,13 @@ void WorldSession::HandleMovementOpcodes( WorldPacket & recv_data )
                 plMover = _player;
             }
         }
+        if(_player->GetVehicleGUID() == movementInfo.t_guid)
+        {
+            _player->m_SeatData.OffsetX = movementInfo.t_x;
+            _player->m_SeatData.OffsetY = movementInfo.t_y;
+            _player->m_SeatData.OffsetZ = movementInfo.t_z;
+            _player->m_SeatData.Orientation = movementInfo.t_o;
+        }
     }
 
     if(recv_data.size() != recv_data.rpos())

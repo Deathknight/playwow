@@ -319,10 +319,9 @@ void Vehicle::RellocatePassengers(Map *map)
             Unit *passengers = itr->second.passenger;
             assert(passengers);
 
-            float scale = GetFloatValue(OBJECT_FIELD_SCALE_X);
-            float xx = GetPositionX() + passengers->m_SeatData.OffsetX * scale;
-            float yy = GetPositionY() + passengers->m_SeatData.OffsetY * scale;
-            float zz = GetPositionZ() + passengers->m_SeatData.OffsetZ * scale;
+            float xx = GetPositionX() + passengers->m_SeatData.OffsetX;
+            float yy = GetPositionY() + passengers->m_SeatData.OffsetY;
+            float zz = GetPositionZ() + passengers->m_SeatData.OffsetZ;
             //float oo = passengers->m_SeatData.Orientation;
             // this is not correct, we should recalculate
             // actual rotation depending on vehicle
@@ -339,10 +338,9 @@ void Vehicle::RellocatePassengers(Map *map)
             Unit *passengers = itr->second.passenger;
             assert(passengers);
 
-            float scale = GetFloatValue(OBJECT_FIELD_SCALE_X);
-            float xx = GetPositionX() + passengers->m_SeatData.OffsetX * scale;
-            float yy = GetPositionY() + passengers->m_SeatData.OffsetY * scale;
-            float zz = GetPositionZ() + passengers->m_SeatData.OffsetZ * scale;
+            float xx = GetPositionX() + passengers->m_SeatData.OffsetX;
+            float yy = GetPositionY() + passengers->m_SeatData.OffsetY;
+            float zz = GetPositionZ() + passengers->m_SeatData.OffsetZ;
             //float oo = passengers->m_SeatData.Orientation;
             // this is not correct, we should recalculate
             // actual rotation depending on vehicle
