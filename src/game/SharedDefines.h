@@ -2373,7 +2373,6 @@ enum SummonMask
 
 enum SummonType
 {
-    // NOTE : this is outdated like hell
     SUMMON_TYPE_CRITTER         = 41,
     SUMMON_TYPE_GUARDIAN        = 61,
     SUMMON_TYPE_TOTEM_SLOT1     = 63,
@@ -2398,7 +2397,6 @@ enum SummonType
     SUMMON_TYPE_VEHICLE3        = 488,
     SUMMON_TYPE_VEHICLE4        = 493,
     SUMMON_TYPE_VEHICLE5        = 607,
-    SUMMON_TYPE_FORCE_OF_NATURE = 669,
     SUMMON_TYPE_VEHICLE6        = 708,
     SUMMON_TYPE_VEHICLE7        = 710,
     SUMMON_TYPE_VEHICLE8        = 716,
@@ -2407,6 +2405,7 @@ enum SummonType
     SUMMON_TYPE_VEHICLE11       = 1081,
     SUMMON_TYPE_GUARDIAN2       = 1161,
     SUMMON_TYPE_VEHICLE12       = 1162,
+    SUMMON_TYPE_FORCE_OF_NATURE = 1562,
     SUMMON_TYPE_VEHICLE13       = 25995
 };
 
