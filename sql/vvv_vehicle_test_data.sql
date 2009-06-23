@@ -10,7 +10,7 @@ UPDATE creature_template SET speed = 2.4, InhabitType = 4 WHERE entry IN (28670)
 UPDATE creature_template SET mechanic_immune_mask = 652951551 WHERE entry IN (28670,28312,32627,28319,32629,28094,29929,28782);
 
 DELETE FROM npc_spellclick_spells WHERE npc_entry in (28670, 28312, 32629, 28319, 32627, 28094, 29929, 28782);
-INSERT INTO npc_spellclick_spells VALUES (28670, 53112, 0, 0, 0, 0);
+INSERT INTO npc_spellclick_spells VALUES (28670, 52196, 0, 0, 0, 0);
 INSERT INTO npc_spellclick_spells VALUES (28312, 60968, 0, 0, 0, 1);
 INSERT INTO npc_spellclick_spells VALUES (32627, 60968, 0, 0, 0, 1);
 INSERT INTO npc_spellclick_spells VALUES (28319, 60968, 0, 0, 0, 1);
@@ -19,7 +19,7 @@ INSERT INTO npc_spellclick_spells VALUES (28094, 60968, 0, 0, 0, 1);
 INSERT INTO npc_spellclick_spells VALUES (29929, 58961, 0, 0, 0, 1);
 INSERT INTO npc_spellclick_spells VALUES (28782, 52280, 12687, 1, 12687, 1);
 
-INSERT IGNORE INTO creature_template_addon VALUES (28670, 0, 50331648, 1, 0, 1024, 156, NULL, NULL);
+INSERT IGNORE INTO creature_template_addon VALUES (28670, 0, 50331648, 1, 0, 1024, 156, NULL, '53112 0 53112 1');
 INSERT IGNORE INTO creature_template_addon VALUES (28312, 0, 0, 0, 0, 0, 117, '28319 7', NULL);
 INSERT IGNORE INTO creature_template_addon VALUES (32627, 0, 0, 0, 0, 0, 117, '32629 7', NULL);
 INSERT IGNORE INTO creature_template_addon VALUES (28319, 0, 0, 0, 0, 0, 116, NULL, NULL);
