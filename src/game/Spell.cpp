@@ -221,7 +221,7 @@ bool SpellCastTargets::read ( WorldPacket * data, Unit *caster, SpellEntry const
             for(int j=0;j<3;j++)
             {
                 // this is requiered, otherwise it will return SPELL_FAILED_BAD_TARGETS
-                skiptarget |= (spell->EffectImplicitTargetA[j] == TARGET_IN_FRONT_OF_CASTER || spell->EffectImplicitTargetA[j] == TARGET_SCRIPT);
+                skiptarget |= (spell->EffectImplicitTargetA[j] == TARGET_IN_FRONT_OF_CASTER || spell->EffectImplicitTargetA[j] == TARGET_SCRIPT || spell->EffectImplicitTargetA[j] == TARGET_EFFECT_SELECT);
             }
         }
         if(!skiptarget)
