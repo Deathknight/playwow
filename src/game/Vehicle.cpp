@@ -110,7 +110,7 @@ bool Vehicle::Create(uint32 guidlow, Map *map, uint32 phaseMask, uint32 Entry, u
     m_creation_time = getMSTime();
 
     SetFloatValue(UNIT_FIELD_HOVERHEIGHT, 1.0f);
-    RemoveUnitMovementFlag(MOVEMENTFLAG_WALK_MODE);
+    //RemoveMonsterMoveFlag(MONSTER_MOVE_WALK);
 
     //Notify the map's instance data.
     //Only works if you create the object in it, not if it is moves to that map.
