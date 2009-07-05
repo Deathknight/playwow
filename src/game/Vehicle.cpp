@@ -461,6 +461,7 @@ void Vehicle::RemovePassenger(Unit *unit)
                 RemoveSpellsCausingAura(SPELL_AURA_CONTROL_VEHICLE);
                 if(unit->GetTypeId() == TYPEID_PLAYER)
                 {
+                    ((Player*)unit)->SetMover(unit);
                     ((Player*)unit)->SetClientControl(unit, 1);
                     ((Player*)unit)->SetMoverInQueve(NULL);
                     WorldPacket data(SMSG_PET_SPELLS, 8);
