@@ -544,7 +544,7 @@ void WorldSession::HandleSpellClick( WorldPacket & recv_data )
         vehicleId = cainfo->vehicle_id;
 
     // handled other (hacky) way to avoid overwriting auras
-    if(vehicleId)
+    if(vehicleId || unit->isVehicle())
     {
         if(!unit->isAlive())
             return;
