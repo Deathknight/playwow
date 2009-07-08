@@ -464,9 +464,7 @@ void Vehicle::RemovePassenger(Unit *unit)
                     ((Player*)unit)->SetMover(unit);
                     ((Player*)unit)->SetClientControl(unit, 1);
                     ((Player*)unit)->SetMoverInQueve(NULL);
-                    WorldPacket data(SMSG_PET_SPELLS, 8);
-                    data << uint64(0);
-                    ((Player*)unit)->GetSession()->SendPacket(&data);
+                    ((Player*)unit)->RemovePetActionBar();
 
                     if(((Player*)unit)->GetGroup())
                         ((Player*)unit)->SetGroupUpdateFlag(GROUP_UPDATE_VEHICLE);

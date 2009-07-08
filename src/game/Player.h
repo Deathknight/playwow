@@ -1442,6 +1442,8 @@ class MANGOS_DLL_SPEC Player : public Unit
         void PetSpellInitialize();
         void CharmSpellInitialize();
         void PossessSpellInitialize();
+        void RemovePetActionBar();
+
         bool HasSpell(uint32 spell) const;
         bool HasActiveSpell(uint32 spell) const;            // show in spellbook
         TrainerSpellState GetTrainerSpellState(TrainerSpell const* trainer_spell) const;
@@ -1776,6 +1778,8 @@ class MANGOS_DLL_SPEC Player : public Unit
         uint32 GetTeam() const { return m_team; }
         static uint32 getFactionForRace(uint8 race);
         void setFactionForRace(uint8 race);
+
+        void InitDisplayIds();
 
         bool IsAtGroupRewardDistance(WorldObject const* pRewardSource) const;
         bool RewardPlayerAndGroupAtKill(Unit* pVictim);
