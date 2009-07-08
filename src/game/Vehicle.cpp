@@ -281,10 +281,10 @@ void Vehicle::EmptySeatsCountChanged()
 
     if(u_count == m_count)
     {
-        RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_24);
+        RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
     }
     else
-        SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_24);
+        SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
 
     if(uint64 vehicleGUID = GetVehicleGUID())
     {
