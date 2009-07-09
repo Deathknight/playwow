@@ -1033,8 +1033,10 @@ enum Targets
     TARGET_AREAEFFECT_PARTY_AND_CLASS  = 61,
     TARGET_DUELVSPLAYER_COORDINATES    = 63,
     TARGET_BEHIND_VICTIM               = 65,                // uses in teleport behind spells, caster/target dependent from spell effect
+    TARGET_UNK_1                       = 72,                // ImplicitTargetA[0] in Army of the Dead spell
     TARGET_DYNAMIC_OBJECT_COORDINATES  = 76,
     TARGET_SINGLE_ENEMY                = 77,
+    TARGET_UNK_2                       = 86,                // ImplicitTargetA[1] in Army of the Dead spell
     TARGET_SELF2                       = 87,
     TARGET_DIRECTLY_FORWARD            = 89,
     TARGET_NONCOMBAT_PET               = 90,
@@ -2369,6 +2371,8 @@ enum SummonType
     SUMMON_TYPE_UNKNOWN5    = 409,
     SUMMON_TYPE_UNKNOWN2    = 427,
     SUMMON_TYPE_POSESSED2   = 428,
+    SUMMON_TYPE_GHOUL_OF_THE_DEAD = 687,
+    SUMMON_TYPE_GHOUL	= 829,
     SUMMON_TYPE_GUARDIAN2   = 1161,
     SUMMON_TYPE_ELEMENTAL   = 1561,
     SUMMON_TYPE_FORCE_OF_NATURE = 1562

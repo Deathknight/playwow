@@ -258,6 +258,9 @@ void Spell::EffectInstaKill(uint32 /*i*/)
 {
     if( !unitTarget || !unitTarget->isAlive() )
         return;
+    // Do not allow to make hara-kiri
+    if ((m_caster->GetTypeId() == TYPEID_PLAYER) && (m_caster == unitTarget))
+        return;
 
     // Demonic Sacrifice
     if(m_spellInfo->Id==18788 && unitTarget->GetTypeId()==TYPEID_UNIT)
@@ -355,6 +358,17 @@ void Spell::EffectSchoolDMG(uint32 effect_idx)
                     case 38441:
                         damage = unitTarget->GetMaxHealth() / 2;
                         break;
+                    // Explode
+                    case 47496:
+                    {
+                        // Special Effect only for caster (ghoul in this case)
+                        if (unitTarget->GetEntry() == 26125 && (unitTarget->GetGUID() == m_caster->GetGUID()))
+                        {
+                            // After explode the ghoul must be killed
+                            unitTarget->DealDamage(unitTarget, unitTarget->GetMaxHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
+                        }
+                        break;
+                    }
                 }
                 break;
             }
@@ -1754,6 +1768,70 @@ void Spell::EffectDummy(uint32 i)
             }
             break;
         case SPELLFAMILY_DEATHKNIGHT:
+            // Corpse Explosion
+            if(m_spellInfo->SpellIconID == 1737)
+            {
+                // Dummy effect is called 2 times for 1 spell. I don't think that it is needed.
+                if (i!=1)
+                    return;
+                // Living ghoul as a target
+                if (unitTarget->GetEntry() == 26125 && unitTarget->isAlive())
+                {
+                    int32 bp = unitTarget->GetMaxHealth()*0.25f;
+                    unitTarget->CastCustomSpell(unitTarget,47496,&bp,NULL,NULL,true);
+                }
+                // Some corpse
+                else
+                {
+                    // In this case only (m_currentBasePoints[0]+1) can guarantee real damage amount.
+                    int32 bp = m_currentBasePoints[0]+1;
+                    m_caster->CastCustomSpell(unitTarget,50444,&bp,NULL,NULL,true);
+                }
+                unitTarget->SetDisplayId(25537+urand(0,3));
+            }
+            if(m_spellInfo->Id == 46584) // Raise dead effect
+             {
+                if (m_caster->GetTypeId() != TYPEID_PLAYER)
+                    return;
+                // We can have a summoned pet/guardian only in 2 cases:
+                // 1. It was summoned from corpse in EffectScriptEffect.
+                if (getState() == SPELL_STATE_FINISHED)
+                    return;
+                // 2. Cooldown of Raise Dead is finished and we want to repeat the cast with active pet.
+                if (((Player*)m_caster)->GetPet())
+                {
+                    ((Player*)m_caster)->RemoveSpellCooldown(m_spellInfo->Id,true);
+                    SendCastResult(SPELL_FAILED_ALREADY_HAVE_SUMMON);
+                    return;
+                }			
+                // We will get here ONLY if we have no corpse.
+                bool allow_cast = false;
+                // We do not need any reagent if we have Glyph of Raise Dead.
+                if (m_caster->HasAura(60200))
+                    allow_cast = true;
+                else
+                {
+                    // We need Corpse Dust to cast a spell.
+                    if (((Player*)m_caster)->HasItemCount(37201,1))
+                    {
+                        ((Player*)m_caster)->DestroyItemCount(37201,1,true);
+                        allow_cast = true;
+                    }
+                    if (allow_cast)
+                    {
+                        if (m_caster->HasSpell(52143))
+                            m_caster->CastSpell(m_caster,52150,true);
+                        else
+                            m_caster->CastSpell(m_caster,46585,true);  
+                    }
+                    else
+                    {
+                        ((Player*)m_caster)->RemoveSpellCooldown(m_spellInfo->Id,true);
+                        SendCastResult(SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW);
+                    }
+                    return;
+                }
+            }
             // Death Coil
             if(m_spellInfo->SpellFamilyFlags & UI64LIT(0x002000))
             {
@@ -2517,6 +2595,13 @@ void Spell::EffectHeal( uint32 /*i*/ )
 
             addhealth += tickheal * tickcount;
         }
+        // Death Pact - requires alive pet or guardian (ghoul or gargoyle)
+        else if (m_spellInfo->Id == 48743)
+        {
+            if (m_caster->GetPet() || m_caster->FindGuardianWithEntry(26125) || m_caster->FindGuardianWithEntry(27829))
+                // Health bonus is X% from max health, not flat X
+                addhealth = int32(caster->GetMaxHealth()*damage/100.0f);
+        }
         else
             addhealth = caster->SpellHealingBonus(unitTarget, m_spellInfo, addhealth, HEAL);
 
@@ -3201,6 +3286,8 @@ void Spell::EffectSummonType(uint32 i)
         case SUMMON_TYPE_POSESSED2:
         case SUMMON_TYPE_FORCE_OF_NATURE:
         case SUMMON_TYPE_GUARDIAN2:
+        case SUMMON_TYPE_GHOUL:
+        case SUMMON_TYPE_GHOUL_OF_THE_DEAD:
             EffectSummonGuardian(i);
             break;
         case SUMMON_TYPE_WILD:
@@ -3654,7 +3741,7 @@ void Spell::EffectSummonGuardian(uint32 i)
     // FIXME: some guardians have control spell applied and controlled by player and anyway player can't summon in this time
     //        so this code hack in fact
     if( m_caster->GetTypeId() == TYPEID_PLAYER && (duration <= 0 || GetSpellRecoveryTime(m_spellInfo) == 0) )
-        if(m_caster->FindGuardianWithEntry(pet_entry))
+        if(m_caster->FindGuardianWithEntry(pet_entry) && m_spellInfo->Id!=42651)
             return;                                         // find old guardian, ignore summon
 
     // in another case summon new
@@ -4248,6 +4335,10 @@ void Spell::EffectSummonPet(uint32 i)
             else
                 ++itr;
         }
+        // Summoned creature is ghoul.
+        if ( NewSummon->GetEntry() == 26125 )
+            // He must have energy bar instead of mana
+            NewSummon->setPowerType(POWER_ENERGY);
 
         // generate new name for summon pet
         std::string new_name=objmgr.GeneratePetName(petentry);
@@ -5199,6 +5290,36 @@ void Spell::EffectScriptEffect(uint32 effIndex)
                     m_caster->CastSpell(unitTarget, spellId2, true);
                 return;
             }
+        }
+        case SPELLFAMILY_DEATHKNIGHT:
+        {
+            switch(m_spellInfo->Id)
+            {
+                case 46584: // Raise dead
+                {
+                    // We will get here ONLY when we have a corpse of humanoid that gives honor or XP.
+                    // If we have active pet, then we should not cast the spell again.
+                    if(m_caster->GetPet())
+                    {
+                        if (m_caster->GetTypeId()==TYPEID_PLAYER)
+                            ((Player*)m_caster)->RemoveSpellCooldown(m_spellInfo->Id,true);
+                        SendCastResult(SPELL_FAILED_ALREADY_HAVE_SUMMON);
+                        return;
+                    }
+                    // Do we have talent Master of Ghouls?
+                    if(m_caster->HasSpell(52143))
+                        // Summon ghoul as a pet
+                        m_caster->CastSpell(unitTarget->GetPositionX(),unitTarget->GetPositionY(),unitTarget->GetPositionZ(),52150,true);
+                    else
+                        // Summon ghoul as a guardian
+                        m_caster->CastSpell(unitTarget->GetPositionX(),unitTarget->GetPositionY(),unitTarget->GetPositionZ(),46585,true);
+                    ((Creature*)unitTarget)->setDeathState(GHOULED);
+                    // Used to prevent further EffectDummy execution
+                    finish();
+                    return;
+                }
+            }
+            break;
         }
         case SPELLFAMILY_POTION:
         {
