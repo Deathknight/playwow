@@ -1317,6 +1317,13 @@ void Aura::HandleAddModifier(bool apply, bool Real)
         if(apply)
             m_target->CastSpell(m_target, 45471, true);
     }
+    else if(m_spellProto->SpellFamilyName == SPELLFAMILY_DEATHKNIGHT && (spellFamilyMask & UI64LIT(0x4000000000000000)))
+    {
+        m_target->RemoveAurasDueToSpell(49772);
+
+        if(apply)
+            m_target->CastSpell(m_target,49772,true);
+    }
 }
 void Aura::HandleAddTargetTrigger(bool apply, bool /*Real*/)
 {
