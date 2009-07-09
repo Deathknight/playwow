@@ -261,3 +261,22 @@ bool ChatHandler::HandleServerMotdCommand(const char* /*args*/)
     PSendSysMessage(LANG_MOTD_CURRENT, sWorld.GetMotd());
     return true;
 }
+
+bool ChatHandler::HandleBugReportCommand(const char* args)
+{
+	std::string obsah = args;
+	loginDatabase.escape_string(obsah);
+
+	uint32 acc_id = m_session->GetAccountId();
+	uint32 type = 0;
+
+	if(!*args)
+    {
+		SendSysMessage(LANG_BUGREPORT_FAILED);
+		return false;
+    }
+	
+	loginDatabase.PExecute(" INSERT INTO bug_report (name, reporter_id, realm, text) VALUES ('%s', %u, %u, '%s')", m_session->GetName(), acc_id, type, obsah.c_str() );   
+	PSendSysMessage(LANG_BUGREPORT_DONE);
+		return true;
+}

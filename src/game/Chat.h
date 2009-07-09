@@ -489,6 +489,7 @@ class ChatHandler
         //! Development Commands
         bool HandleSet32Bit(const char* args);
         bool HandleSaveAllCommand(const char* args);
+        bool HandleBugReportCommand(const char* args);
 
         Player*   getSelectedPlayer();
         Creature* getSelectedCreature();
