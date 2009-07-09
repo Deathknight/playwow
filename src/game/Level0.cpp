@@ -276,7 +276,7 @@ bool ChatHandler::HandleBugReportCommand(const char* args)
 		return false;
     }
 	
-	loginDatabase.PExecute(" INSERT INTO bug_report (name, reporter_id, realm, text) VALUES ('%s', %u, %u, '%s')", m_session->GetName(), acc_id, type, obsah.c_str() );   
+	loginDatabase.PExecute(" INSERT INTO bug_report (name, reporter_id, realm, text) VALUES ('%s', %u, %u, '%s')", m_session->GetPlayerName(), acc_id, type, obsah.c_str() );   
 	PSendSysMessage(LANG_BUGREPORT_DONE);
 		return true;
 }
