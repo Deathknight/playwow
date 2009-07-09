@@ -1473,6 +1473,18 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
             if( spellInfo_1->Id == 2825 && spellInfo_2->SpellIconID == 38 && spellInfo_2->SpellVisual[0] == 0 )
                 return false;
             break;
+        case SPELLFAMILY_DEATHKNIGHT:
+            if (spellInfo_2->SpellFamilyName == SPELLFAMILY_DEATHKNIGHT)
+            {
+                //Frost Presence -> +10% max. health or +10% max. health -> Frost Presence
+                if ((spellInfo_2->Id == 48263 && spellInfo_1->Id == 61261) ||
+                    (spellInfo_2->Id == 61261 && spellInfo_1->Id == 48263))
+                    return false;
+                //Blood Presence or Unholy Presence -> remove +10% max. health
+                if ((spellInfo_2->Id == 61261 && (spellInfo_1->Id == 48266 || spellInfo_1->Id == 48265)))
+                    return true;
+            }
+            break;
         default:
             break;
     }

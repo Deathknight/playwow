@@ -2338,6 +2338,12 @@ void Spell::cast(bool skipCheck)
                 AddPrecastSpell(57723);                     // Exhaustion
             break;
         }
+        case SPELLFAMILY_DEATHKNIGHT:
+        {
+            if (m_spellInfo->Id == 48263)
+                AddPrecastSpell(61261);
+            break;
+        }
         default:
             break;
     }
