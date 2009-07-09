@@ -5202,6 +5202,14 @@ bool Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura* triggeredByAu
                     target = this;
                     break;
                 }
+                // Improved Shadowform
+                case 47570:
+                case 47569:
+                {
+                    RemoveSpellsCausingAura(SPELL_AURA_MOD_ROOT);
+                    RemoveSpellsCausingAura(SPELL_AURA_MOD_DECREASE_SPEED);
+                    break;
+                }
                 // Oracle Healing Bonus ("Garments of the Oracle" set)
                 case 26169:
                 {
