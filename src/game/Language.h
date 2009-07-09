@@ -777,9 +777,9 @@ enum MangosStrings
     //                                    10000-10999
 
     // Use for custom patches             11000-11999
-
-    LANG_BUGREPORT_DONE	                = 11001,
+    LANG_BUGREPORT_DONE                 = 11001,
     LANG_BUGREPORT_FAILED               = 11002,
+    // Only for Realm-Psy
     LANG_PSYCITY_EXIT                   = 11003,
 
     // NOT RESERVED IDS                   12000-1999999999
