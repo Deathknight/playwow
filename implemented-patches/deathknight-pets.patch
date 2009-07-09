@@ -1,0 +1,631 @@
+diff --git a/src/game/Creature.cpp b/src/game/Creature.cpp
+index 98e500d..893a9b5 100644
+--- a/src/game/Creature.cpp
++++ b/src/game/Creature.cpp
+@@ -153,7 +153,7 @@ void Creature::RemoveFromWorld()
+ 
+ void Creature::RemoveCorpse()
+ {
+-    if( getDeathState()!=CORPSE && !m_isDeadByDefault || getDeathState()!=ALIVE && m_isDeadByDefault )
++    if( (getDeathState()!=CORPSE && getDeathState()!=GHOULED) && !m_isDeadByDefault || getDeathState()!=ALIVE && m_isDeadByDefault )
+         return;
+ 
+     m_deathTimer = 0;
+@@ -363,6 +363,7 @@ void Creature::Update(uint32 diff)
+             }
+             break;
+         }
++	case GHOULED:
+         case CORPSE:
+         {
+             if (m_isDeadByDefault)
+diff --git a/src/game/GridNotifiers.h b/src/game/GridNotifiers.h
+index ae34ed7..8ccd9ba 100644
+--- a/src/game/GridNotifiers.h
++++ b/src/game/GridNotifiers.h
+@@ -558,8 +558,8 @@ namespace MaNGOS
+             }
+             bool operator()(Creature* u)
+             {
+-                if (u->getDeathState()!=CORPSE || u->isInFlight() || u->isDeadByDefault() ||
+-                    (u->GetDisplayId() != u->GetNativeDisplayId()) ||
++                if ((u->getDeathState()!=CORPSE && u->getDeathState()!=GHOULED) || u->isInFlight() ||
++                    u->isDeadByDefault() || (u->GetDisplayId() != u->GetNativeDisplayId()) ||
+                     (u->GetCreatureTypeMask() & CREATURE_TYPEMASK_MECHANICAL_OR_ELEMENTAL)!=0)
+                     return false;
+ 
+diff --git a/src/game/Pet.cpp b/src/game/Pet.cpp
+index 32964c8..940637e 100644
+--- a/src/game/Pet.cpp
++++ b/src/game/Pet.cpp
+@@ -204,6 +204,11 @@ bool Pet::LoadPetFromDB( Player* owner, uint32 petentry, uint32 petnumber, bool
+ 
+             SetUInt32Value(UNIT_FIELD_BYTES_0, 2048);
+             SetUInt32Value(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP_ATTACKABLE);
++
++             // If pet is deathknight's ghoul
++            if (GetEntry() == 26125)
++                // then he must have energy bar instead of mana
++                setPowerType(POWER_ENERGY);
+                                                             // this enables popup window (pet dismiss, cancel)
+             break;
+         case HUNTER_PET:
+@@ -1913,13 +1918,38 @@ void Pet::CastPetAura(PetAura const* aura)
+     if(!auraId)
+         return;
+ 
+-    if(auraId == 35696)                                       // Demonic Knowledge
+-    {
+-        int32 basePoints = int32(aura->GetDamage() * (GetStat(STAT_STAMINA) + GetStat(STAT_INTELLECT)) / 100);
+-        CastCustomSpell(this, auraId, &basePoints, NULL, NULL, true);
+-    }
+-    else
+-        CastSpell(this, auraId, true);
++
++    switch (auraId)
++     {
++        case 35696: // Demonic Knowledge
++        {
++            int32 basePoints = int32(aura->GetDamage() * (GetStat(STAT_STAMINA) + GetStat(STAT_INTELLECT)) / 100);
++            CastCustomSpell(this, auraId, &basePoints, NULL, NULL, true);
++            break;
++        }
++        case 54566: // Ravenous Dead
++        {
++            Unit* owner = GetOwner();
++            if (owner)
++            {
++                // We must give x% bonus to base bonus from owner's stamina to ghoul stamina
++                int32 basePoints0 =
++                    int32(owner->GetStat(STAT_STAMINA)*0.3f*(aura->GetDamage()+100.0f)/100.0f
++                    - (GetStat(STAT_STAMINA)-GetCreateStat(STAT_STAMINA)));
++                // We must give x% bonus to base bonus from owner's strength to ghoul strength
++                int32 basePoints1 =
++                    int32(owner->GetStat(STAT_STRENGTH)*0.3f*(aura->GetDamage()+100.0f)/100.0f
++                    - (GetStat(STAT_STRENGTH)-GetCreateStat(STAT_STRENGTH)));
++                CastCustomSpell(this, auraId, &basePoints0, &basePoints1, NULL, true);
++            }
++            break;
++        }
++        default:
++        {
++            CastSpell(this, auraId, true);
++            break;
++        }
++     }
+ }
+ 
+ void Pet::learnSpellHighRank(uint32 spellid)
+diff --git a/src/game/Player.cpp b/src/game/Player.cpp
+index dd89515..f6facfa 100644
+--- a/src/game/Player.cpp
++++ b/src/game/Player.cpp
+@@ -4511,6 +4511,7 @@ void Player::RepopAtGraveyard()
+             GetSession()->SendPacket(&data);
+         }
+     }
++    SetDisplayId(GetNativeDisplayId());
+ }
+ 
+ void Player::JoinedChannel(Channel *c)
+diff --git a/src/game/SharedDefines.h b/src/game/SharedDefines.h
+index d98938c..74cd20c 100644
+--- a/src/game/SharedDefines.h
++++ b/src/game/SharedDefines.h
+@@ -1033,8 +1033,10 @@ enum Targets
+     TARGET_AREAEFFECT_PARTY_AND_CLASS  = 61,
+     TARGET_DUELVSPLAYER_COORDINATES    = 63,
+     TARGET_BEHIND_VICTIM               = 65,                // uses in teleport behind spells, caster/target dependent from spell effect
++    TARGET_UNK_1                       = 72,                // ImplicitTargetA[0] in Army of the Dead spell
+     TARGET_DYNAMIC_OBJECT_COORDINATES  = 76,
+     TARGET_SINGLE_ENEMY                = 77,
++    TARGET_UNK_2                       = 86,                // ImplicitTargetA[1] in Army of the Dead spell
+     TARGET_SELF2                       = 87,
+     TARGET_DIRECTLY_FORWARD            = 89,
+     TARGET_NONCOMBAT_PET               = 90,
+@@ -2369,6 +2371,8 @@ enum SummonType
+     SUMMON_TYPE_UNKNOWN5    = 409,
+     SUMMON_TYPE_UNKNOWN2    = 427,
+     SUMMON_TYPE_POSESSED2   = 428,
++    SUMMON_TYPE_GHOUL_OF_THE_DEAD = 687,
++    SUMMON_TYPE_GHOUL	= 829,
+     SUMMON_TYPE_GUARDIAN2   = 1161,
+     SUMMON_TYPE_ELEMENTAL   = 1561,
+     SUMMON_TYPE_FORCE_OF_NATURE = 1562
+diff --git a/src/game/Spell.cpp b/src/game/Spell.cpp
+index 6dd953a..15c43e3 100644
+--- a/src/game/Spell.cpp
++++ b/src/game/Spell.cpp
+@@ -477,6 +477,95 @@ WorldObject* Spell::FindCorpseUsing()
+     return result;
+ }
+ 
++void Spell::FillCustomTargetMap(uint32 i, UnitList& TagUnitMap)
++{
++    float radius;
++    if (m_spellInfo->EffectRadiusIndex[i])
++        radius = GetSpellRadius(sSpellRadiusStore.LookupEntry(m_spellInfo->EffectRadiusIndex[i]));
++    else
++        radius = GetSpellMaxRange(sSpellRangeStore.LookupEntry(m_spellInfo->rangeIndex));
++    // Resulting effect depends on spell that we want to cast
++    switch (m_spellInfo->Id)
++    {
++        case 48743: // Death Pact
++        {
++            Unit* unit_to_add = NULL;
++            if (Player* modOwner = m_caster->GetSpellModOwner())
++            {
++                // If we have regular pet
++                Pet* pet = modOwner->GetPet();
++                if (pet && pet->GetCreatureInfo()->type == CREATURE_TYPE_UNDEAD)
++                    unit_to_add = pet;
++                else
++                {
++                    // Maybe we have a summoned guardian?
++                    GuardianPetList const& guardians = modOwner->GetGuardians();
++                    for (GuardianPetList::const_iterator itr = guardians.begin(); itr != guardians.end(); ++itr)
++                    {
++                        Pet* temp_pet = ObjectAccessor::GetPet(*itr);
++                        if(temp_pet && temp_pet->isAlive())
++                            if (temp_pet->GetEntry() == 26125 || temp_pet->GetEntry() == 27829)
++                            {
++                                unit_to_add = temp_pet;
++                                break;
++                            }
++                    }
++                }
++                if (unit_to_add)
++                    TagUnitMap.push_back(unit_to_add);
++                else
++                {
++                    if (modOwner->GetTypeId()==TYPEID_PLAYER)
++                        modOwner->RemoveSpellCooldown(m_spellInfo->Id,true);
++                    SendCastResult(SPELL_FAILED_NO_PET);
++                    finish(false);
++                }
++            }
++            break;
++        }
++        case 46584: // Raise Dead
++        {
++            WorldObject* result = FindCorpseUsing <MaNGOS::RaiseDeadObjectCheck>  ();
++
++            if(result)
++            {
++                switch(result->GetTypeId())
++                {
++                    case TYPEID_UNIT:
++                        TagUnitMap.push_back((Unit*)result);
++                        break;
++                    default:
++                        break;
++                }
++            }
++            break;
++        }
++        case 47496: // Ghoul's explode
++        {
++            FillAreaTargets(TagUnitMap,m_targets.m_destX, m_targets.m_destY,radius,PUSH_DEST_CENTER,SPELL_TARGETS_AOE_DAMAGE);
++            break;
++        }
++        default:
++        {
++            switch(m_spellInfo->EffectImplicitTargetB[i])
++            {
++                 case 0:
++                     SetTargetMap(i,m_spellInfo->EffectImplicitTargetA[i],TagUnitMap);
++                     break;
++                 case TARGET_SCRIPT_COORDINATES:         // B case filled in CheckCast but we need fill unit list base at A case
++                     SetTargetMap(i,m_spellInfo->EffectImplicitTargetA[i],TagUnitMap);
++                     break;
++                 default:
++                     SetTargetMap(i,m_spellInfo->EffectImplicitTargetA[i],TagUnitMap);
++                     SetTargetMap(i,m_spellInfo->EffectImplicitTargetB[i],TagUnitMap);
++                     break;
++            }
++            break;
++        }
++    }
++}
++
++
+ void Spell::FillTargetMap()
+ {
+     // TODO: ADD the correct target FILLS!!!!!!
+@@ -561,6 +650,26 @@ void Spell::FillTargetMap()
+                     break;
+                 }
+                 break;
++            case TARGET_EFFECT_SELECT:
++                if (m_spellInfo->Id == 46584 || m_spellInfo->Id == 47496 || m_spellInfo->Id == 48018 || m_spellInfo->Id == 48743)
++                {
++                    FillCustomTargetMap(i,tmpUnitMap);
++                    break;
++                }
++                switch(m_spellInfo->EffectImplicitTargetB[i])
++                {
++                    case 0:
++                        SetTargetMap(i, m_spellInfo->EffectImplicitTargetA[i], tmpUnitMap);
++                        break;
++                    case TARGET_SCRIPT_COORDINATES:         // B case filled in CheckCast but we need fill unit list base at A case
++                        SetTargetMap(i, m_spellInfo->EffectImplicitTargetA[i], tmpUnitMap);
++                        break;
++                    default:
++                        SetTargetMap(i, m_spellInfo->EffectImplicitTargetA[i], tmpUnitMap);
++                        SetTargetMap(i, m_spellInfo->EffectImplicitTargetB[i], tmpUnitMap);
++                        break;
++                }
++                break;
+             default:
+                 switch(m_spellInfo->EffectImplicitTargetB[i])
+                 {
+@@ -1428,13 +1537,66 @@ void Spell::SetTargetMap(uint32 i,uint32 cur,UnitList& TagUnitMap)
+         case TARGET_SELF:
+         case TARGET_SELF2:
+         case TARGET_DYNAMIC_OBJECT:
+-        case TARGET_AREAEFFECT_CUSTOM:
+         case TARGET_AREAEFFECT_CUSTOM_2:
+         case TARGET_SUMMON:
+         {
+             TagUnitMap.push_back(m_caster);
+             break;
+         }
++        case TARGET_AREAEFFECT_CUSTOM:
++        {
++            switch (m_spellInfo->SpellFamilyName)
++            {
++                case SPELLFAMILY_DEATHKNIGHT:
++                {
++                    switch (m_spellInfo->SpellIconID)
++                    {
++                        case 1737: // Corpse Explosion
++                        {	
++                            // if not our ghoul AND
++                            if (!(m_targets.getUnitTarget()->GetEntry() == 26125 && m_targets.getUnitTarget()->GetOwnerGUID() == m_caster->GetGUID()) &&
++                                // alive target or not suitable corpse
++                                ( ((Creature*)m_targets.getUnitTarget())->isDeadByDefault() ||
++                                (m_targets.getUnitTarget()->getDeathState() != CORPSE && m_targets.getUnitTarget()->getDeathState() != GHOULED) ||
++                                (m_targets.getUnitTarget()->GetCreatureTypeMask() & CREATURE_TYPEMASK_MECHANICAL_OR_ELEMENTAL)!=0 || 
++                                (m_targets.getUnitTarget()->GetDisplayId() != m_targets.getUnitTarget()->GetNativeDisplayId()) ))
++                            {	
++                                TagUnitMap.clear();
++                                CleanupTargetList();
++
++                                WorldObject* result = FindCorpseUsing <MaNGOS::ExplodeCorpseObjectCheck> ();
++
++                                if(result)
++                                {
++                                    switch(result->GetTypeId())
++                                    {
++                                        case TYPEID_UNIT:
++                                        case TYPEID_PLAYER:
++                                            TagUnitMap.push_back((Unit*)result);
++                                            break;
++                                    }
++                                }
++                                else
++                                {
++                                    if (m_caster->GetTypeId()==TYPEID_PLAYER)
++                                        ((Player*)m_caster)->RemoveSpellCooldown(m_spellInfo->Id,true);
++                                    SendCastResult(SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW);
++                                    finish(false);
++                                }
++                            }
++                            break;
++                        }
++                    }
++                    break;
++                }
++                default :
++                {
++                    TagUnitMap.push_back(m_caster);
++                    break;
++                }
++            }
++            break;
++        }
+         case TARGET_RANDOM_ENEMY_CHAIN_IN_AREA:
+         {
+             m_targets.m_targetMask = 0;
+@@ -2094,6 +2256,19 @@ void Spell::SetTargetMap(uint32 i,uint32 cur,UnitList& TagUnitMap)
+             TagUnitMap.push_back(m_caster);
+             break;
+         }
++        case TARGET_UNK_1:
++        {
++            float dest_x = m_caster->GetPositionX()+irand(-radius,radius);
++            float dest_y = m_caster->GetPositionY()+irand(-radius,radius);
++            float dest_z = m_caster->GetMap()->GetHeight(dest_x,dest_y,MAX_HEIGHT);
++            m_targets.setDestination(dest_x,dest_y,dest_z);
++            break;
++        }
++        case TARGET_UNK_2:
++        {
++            TagUnitMap.push_back(m_caster);
++            break;
++        }
+         default:
+             break;
+     }
+diff --git a/src/game/Spell.h b/src/game/Spell.h
+index d3b587e..240c69c 100644
+--- a/src/game/Spell.h
++++ b/src/game/Spell.h
+@@ -367,6 +367,7 @@ class Spell
+         typedef std::list<Unit*> UnitList;
+         void FillTargetMap();
+         void SetTargetMap(uint32 i,uint32 cur,UnitList& TagUnitMap);
++        void FillCustomTargetMap(uint32 i, UnitList& TagUnitMap);
+ 
+         void FillAreaTargets( UnitList& TagUnitMap, float x, float y, float radius, SpellNotifyPushType pushType, SpellTargets spellTargets );
+         void FillRaidOrPartyTargets( UnitList &TagUnitMap, Unit* target, float radius, bool raid, bool withPets, bool withcaster );
+diff --git a/src/game/SpellEffects.cpp b/src/game/SpellEffects.cpp
+index 200d8b0..c35a83c 100644
+--- a/src/game/SpellEffects.cpp
++++ b/src/game/SpellEffects.cpp
+@@ -258,6 +258,9 @@ void Spell::EffectInstaKill(uint32 /*i*/)
+ {
+     if( !unitTarget || !unitTarget->isAlive() )
+         return;
++    // Do not allow to make hara-kiri
++    if ((m_caster->GetTypeId() == TYPEID_PLAYER) && (m_caster == unitTarget))
++        return;
+ 
+     // Demonic Sacrifice
+     if(m_spellInfo->Id==18788 && unitTarget->GetTypeId()==TYPEID_UNIT)
+@@ -355,6 +358,17 @@ void Spell::EffectSchoolDMG(uint32 effect_idx)
+                     case 38441:
+                         damage = unitTarget->GetMaxHealth() / 2;
+                         break;
++                    // Explode
++                    case 47496:
++                    {
++                        // Special Effect only for caster (ghoul in this case)
++                        if (unitTarget->GetEntry() == 26125 && (unitTarget->GetGUID() == m_caster->GetGUID()))
++                        {
++                            // After explode the ghoul must be killed
++                            unitTarget->DealDamage(unitTarget, unitTarget->GetMaxHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
++                        }
++                        break;
++                    }
+                 }
+                 break;
+             }
+@@ -1754,6 +1768,70 @@ void Spell::EffectDummy(uint32 i)
+             }
+             break;
+         case SPELLFAMILY_DEATHKNIGHT:
++            // Corpse Explosion
++            if(m_spellInfo->SpellIconID == 1737)
++            {
++                // Dummy effect is called 2 times for 1 spell. I don't think that it is needed.
++                if (i!=1)
++                    return;
++                // Living ghoul as a target
++                if (unitTarget->GetEntry() == 26125 && unitTarget->isAlive())
++                {
++                    int32 bp = unitTarget->GetMaxHealth()*0.25f;
++                    unitTarget->CastCustomSpell(unitTarget,47496,&bp,NULL,NULL,true);
++                }
++                // Some corpse
++                else
++                {
++                    // In this case only (m_currentBasePoints[0]+1) can guarantee real damage amount.
++                    int32 bp = m_currentBasePoints[0]+1;
++                    m_caster->CastCustomSpell(unitTarget,50444,&bp,NULL,NULL,true);
++                }
++                unitTarget->SetDisplayId(25537+urand(0,3));
++            }
++            if(m_spellInfo->Id == 46584) // Raise dead effect
++             {
++                if (m_caster->GetTypeId() != TYPEID_PLAYER)
++                    return;
++                // We can have a summoned pet/guardian only in 2 cases:
++                // 1. It was summoned from corpse in EffectScriptEffect.
++                if (getState() == SPELL_STATE_FINISHED)
++                    return;
++                // 2. Cooldown of Raise Dead is finished and we want to repeat the cast with active pet.
++                if (((Player*)m_caster)->GetPet())
++                {
++                    ((Player*)m_caster)->RemoveSpellCooldown(m_spellInfo->Id,true);
++                    SendCastResult(SPELL_FAILED_ALREADY_HAVE_SUMMON);
++                    return;
++                }			
++                // We will get here ONLY if we have no corpse.
++                bool allow_cast = false;
++                // We do not need any reagent if we have Glyph of Raise Dead.
++                if (m_caster->HasAura(60200))
++                    allow_cast = true;
++                else
++                {
++                    // We need Corpse Dust to cast a spell.
++                    if (((Player*)m_caster)->HasItemCount(37201,1))
++                    {
++                        ((Player*)m_caster)->DestroyItemCount(37201,1,true);
++                        allow_cast = true;
++                    }
++                    if (allow_cast)
++                    {
++                        if (m_caster->HasSpell(52143))
++                            m_caster->CastSpell(m_caster,52150,true);
++                        else
++                            m_caster->CastSpell(m_caster,46585,true);  
++                    }
++                    else
++                    {
++                        ((Player*)m_caster)->RemoveSpellCooldown(m_spellInfo->Id,true);
++                        SendCastResult(SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW);
++                    }
++                    return;
++                }
++            }
+             // Death Coil
+             if(m_spellInfo->SpellFamilyFlags & UI64LIT(0x002000))
+             {
+@@ -2517,6 +2595,13 @@ void Spell::EffectHeal( uint32 /*i*/ )
+ 
+             addhealth += tickheal * tickcount;
+         }
++        // Death Pact - requires alive pet or guardian (ghoul or gargoyle)
++        else if (m_spellInfo->Id == 48743)
++        {
++            if (m_caster->GetPet() || m_caster->FindGuardianWithEntry(26125) || m_caster->FindGuardianWithEntry(27829))
++                // Health bonus is X% from max health, not flat X
++                addhealth = int32(caster->GetMaxHealth()*damage/100.0f);
++        }
+         else
+             addhealth = caster->SpellHealingBonus(unitTarget, m_spellInfo, addhealth, HEAL);
+ 
+@@ -3201,6 +3286,8 @@ void Spell::EffectSummonType(uint32 i)
+         case SUMMON_TYPE_POSESSED2:
+         case SUMMON_TYPE_FORCE_OF_NATURE:
+         case SUMMON_TYPE_GUARDIAN2:
++        case SUMMON_TYPE_GHOUL:
++        case SUMMON_TYPE_GHOUL_OF_THE_DEAD:
+             EffectSummonGuardian(i);
+             break;
+         case SUMMON_TYPE_WILD:
+@@ -3654,7 +3741,7 @@ void Spell::EffectSummonGuardian(uint32 i)
+     // FIXME: some guardians have control spell applied and controlled by player and anyway player can't summon in this time
+     //        so this code hack in fact
+     if( m_caster->GetTypeId() == TYPEID_PLAYER && (duration <= 0 || GetSpellRecoveryTime(m_spellInfo) == 0) )
+-        if(m_caster->FindGuardianWithEntry(pet_entry))
++        if(m_caster->FindGuardianWithEntry(pet_entry) && m_spellInfo->Id!=42651)
+             return;                                         // find old guardian, ignore summon
+ 
+     // in another case summon new
+@@ -4248,6 +4335,10 @@ void Spell::EffectSummonPet(uint32 i)
+             else
+                 ++itr;
+         }
++        // Summoned creature is ghoul.
++        if ( NewSummon->GetEntry() == 26125 )
++            // He must have energy bar instead of mana
++            NewSummon->setPowerType(POWER_ENERGY);
+ 
+         // generate new name for summon pet
+         std::string new_name=objmgr.GeneratePetName(petentry);
+@@ -5200,6 +5291,36 @@ void Spell::EffectScriptEffect(uint32 effIndex)
+                 return;
+             }
+         }
++        case SPELLFAMILY_DEATHKNIGHT:
++        {
++            switch(m_spellInfo->Id)
++            {
++                case 46584: // Raise dead
++                {
++                    // We will get here ONLY when we have a corpse of humanoid that gives honor or XP.
++                    // If we have active pet, then we should not cast the spell again.
++                    if(m_caster->GetPet())
++                    {
++                        if (m_caster->GetTypeId()==TYPEID_PLAYER)
++                            ((Player*)m_caster)->RemoveSpellCooldown(m_spellInfo->Id,true);
++                        SendCastResult(SPELL_FAILED_ALREADY_HAVE_SUMMON);
++                        return;
++                    }
++                    // Do we have talent Master of Ghouls?
++                    if(m_caster->HasSpell(52143))
++                        // Summon ghoul as a pet
++                        m_caster->CastSpell(unitTarget->GetPositionX(),unitTarget->GetPositionY(),unitTarget->GetPositionZ(),52150,true);
++                    else
++                        // Summon ghoul as a guardian
++                        m_caster->CastSpell(unitTarget->GetPositionX(),unitTarget->GetPositionY(),unitTarget->GetPositionZ(),46585,true);
++                    ((Creature*)unitTarget)->setDeathState(GHOULED);
++                    // Used to prevent further EffectDummy execution
++                    finish();
++                    return;
++                }
++            }
++            break;
++        }
+         case SPELLFAMILY_POTION:
+         {
+             switch(m_spellInfo->Id)
+diff --git a/src/game/StatSystem.cpp b/src/game/StatSystem.cpp
+index 2e512c3..453c85d 100644
+--- a/src/game/StatSystem.cpp
++++ b/src/game/StatSystem.cpp
+@@ -39,11 +39,19 @@ bool Player::UpdateStats(Stats stat)
+ 
+     SetStat(stat, int32(value));
+ 
+-    if(stat == STAT_STAMINA || stat == STAT_INTELLECT)
++                                                          // deathknight's ghoul benefit from owner's strength
++    if(stat == STAT_STAMINA || stat == STAT_INTELLECT || stat == STAT_STRENGTH)
+     {
+         Pet *pet = GetPet();
+         if(pet)
++	{
+             pet->UpdateStats(stat);
++            if (getClass() == CLASS_DEATH_KNIGHT && pet->getPetType() == SUMMON_PET)
++            {
++                pet->RemoveAllAuras();
++                pet->CastPetAuras(true);
++            }
++        }
+     }
+ 
+     switch(stat)
+@@ -839,6 +847,13 @@ bool Pet::UpdateStats(Stats stat)
+         if(owner)
+             value += float(owner->GetStat(stat)) * 0.3f;
+     }
++    else if ( stat == STAT_STRENGTH && getPetType() == SUMMON_PET )
++    {
++        if (owner && (owner->getClass() == CLASS_DEATH_KNIGHT))
++        {
++            value += float(owner->GetStat(stat)) * 0.3f;
++        }
++    }
+                                                             //warlock's and mage's pets gain 30% of owner's intellect
+     else if ( stat == STAT_INTELLECT && getPetType() == SUMMON_PET )
+     {
+@@ -962,6 +977,12 @@ void Pet::UpdateAttackPowerAndDamage(bool ranged)
+             bonusAP = owner->GetTotalAttackPowerValue(RANGED_ATTACK) * 0.22f;
+             SetBonusDamage( int32(owner->GetTotalAttackPowerValue(RANGED_ATTACK) * 0.1287f));
+         }
++        //ghouls benefit from deathknight's attack power
++        else if(getPetType() == SUMMON_PET && owner->getClass() == CLASS_DEATH_KNIGHT)
++        {
++            bonusAP = owner->GetTotalAttackPowerValue(BASE_ATTACK) * 0.22f;
++            SetBonusDamage( int32(owner->GetTotalAttackPowerValue(BASE_ATTACK) * 0.1287f));
++        }
+         //demons benefit from warlocks shadow or fire damage
+         else if(getPetType() == SUMMON_PET && owner->getClass() == CLASS_WARLOCK)
+         {
+diff --git a/src/game/Unit.cpp b/src/game/Unit.cpp
+index aa389f8..c108371 100644
+--- a/src/game/Unit.cpp
++++ b/src/game/Unit.cpp
+@@ -9553,7 +9553,7 @@ void Unit::setDeathState(DeathState s)
+ 
+     if (m_deathState != ALIVE && s == ALIVE)
+     {
+-        //_ApplyAllAuraMods();
++        SetDisplayId(GetNativeDisplayId());
+     }
+     m_deathState = s;
+ }
+diff --git a/src/game/Unit.h b/src/game/Unit.h
+index 8762723..973b82e 100644
+--- a/src/game/Unit.h
++++ b/src/game/Unit.h
+@@ -386,7 +386,8 @@ enum DeathState
+     CORPSE      = 2,
+     DEAD        = 3,
+     JUST_ALIVED = 4,
+-    DEAD_FALLING= 5
++    DEAD_FALLING= 5,
++    GHOULED     = 6
+ };
+ 
+ enum UnitState
+@@ -1185,6 +1186,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
+         void RemoveGuardian(Pet* pet);
+         void RemoveGuardians();
+         Pet* FindGuardianWithEntry(uint32 entry);
++        GuardianPetList const& GetGuardians() const { return m_guardianPets; }
+ 
+         bool isCharmed() const { return GetCharmerGUID() != 0; }
+ 
