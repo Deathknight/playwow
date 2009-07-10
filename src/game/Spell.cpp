@@ -1533,6 +1533,7 @@ void Spell::SetTargetMap(uint32 i,uint32 cur,UnitList& TagUnitMap)
         case TARGET_DYNAMIC_OBJECT:
         case TARGET_AREAEFFECT_CUSTOM_2:
         case TARGET_SUMMON:
+		case TARGET_EFFECT_SELECT:
         {
             TagUnitMap.push_back(m_caster);
             break;
