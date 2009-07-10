@@ -1495,6 +1495,9 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
         case SPELLFAMILY_DEATHKNIGHT:
             if (spellInfo_2->SpellFamilyName == SPELLFAMILY_DEATHKNIGHT)
             {
+		// Lichborne shapeshift and immunity
+                if (spellInfo_1->SpellFamilyFlags == UI64LIT(0x1000000000) && spellInfo_2->SpellFamilyFlags == UI64LIT(0x1000000000))
+                    return false;
                 //Frost Presence -> +10% max. health or +10% max. health -> Frost Presence
                 if ((spellInfo_2->Id == 48263 && spellInfo_1->Id == 61261) ||
                     (spellInfo_2->Id == 61261 && spellInfo_1->Id == 48263))

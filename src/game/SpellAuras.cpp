@@ -2652,6 +2652,7 @@ void Aura::HandleAuraModShapeshift(bool apply, bool Real)
         case FORM_AMBIENT:
         case FORM_SHADOW:
         case FORM_STEALTH:
+		case FORM_UNDEAD:
             break;
         case FORM_TREE:
             modelid = 864;
@@ -4061,6 +4062,15 @@ void Aura::HandleModMechanicImmunity(bool apply, bool /*Real*/)
             target->RemoveAurasDueToSpell(24397);
             target->RemoveAurasDueToSpell(26592);
         }
+    }
+
+	// Lichborne - apply shapeshift (only at first aura apply/remove)
+    if (spellInfo->Id == 49039 && GetEffIndex() == 0)
+    {
+        if (apply)
+            target->CastSpell(target,50397,true);
+        else
+            target->RemoveAurasDueToSpell(50397);
     }
 }
 
