@@ -2595,6 +2595,19 @@ void Spell::EffectHeal( uint32 /*i*/ )
                 // Health bonus is X% from max health, not flat X
                 addhealth = int32(caster->GetMaxHealth()*damage/100.0f);
         }
+        //Nourish 20% of heal increase if target is afected by Druids HOTs
+        else if(m_spellInfo->SpellFamilyFlags & UI64LIT(0x0200000000000000)){
+            Unit::AuraList const& RejorRegr = unitTarget->GetAurasByType(SPELL_AURA_PERIODIC_HEAL);
+
+            for(Unit::AuraList::const_iterator i = RejorRegr.begin(); i != RejorRegr.end(); ++i)
+            {
+                if((*i)->GetSpellProto()->SpellFamilyName == SPELLFAMILY_DRUID)
+                {
+                    addhealth+=addhealth*0.2;
+                    break;
+                }
+            }
+        }
         else
             addhealth = caster->SpellHealingBonus(unitTarget, m_spellInfo, addhealth, HEAL);
 
