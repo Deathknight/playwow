@@ -5594,6 +5594,15 @@ bool Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura* triggeredByAu
                     triggered_spell_id = 31803;
                     break;
                 }
+				// Seal of Corruption (damage calc on apply aura)
+                case 53736:
+                {
+                    if(effIndex != 0)                       // effect 1,2 used by seal unleashing code
+                        return false;
+
+                    triggered_spell_id = 53742;
+                    break;
+                }
                 // Spiritual Attunement
                 case 31785:
                 case 33776:
@@ -5613,14 +5622,6 @@ bool Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura* triggeredByAu
                 {
                     if (effIndex == 0)       // 0 effect - is proc on enemy
                         triggered_spell_id = 31893;
-                    else if (effIndex == 1)  // 1 effect - is proc on self
-                    {
-                        // add spell damage from prev effect (27%)
-                        damage += CalculateDamage(BASE_ATTACK, false) * 27 / 100;
-                        basepoints0 =  triggerAmount * damage / 100;
-                        target = this;
-                        triggered_spell_id = 32221;
-                    }
                     else
                         return true;
                     break;
@@ -5630,14 +5631,6 @@ bool Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura* triggeredByAu
                 {
                     if (effIndex == 0)      // 0 effect - is proc on enemy
                         triggered_spell_id = 53719;
-                    else if (effIndex == 1) // 1 effect - is proc on self
-                    {
-                        // add spell damage from prev effect (27%)
-                        damage += CalculateDamage(BASE_ATTACK, false) * 27 / 100;
-                        basepoints0 =  triggerAmount * damage / 100;
-                        target = this;
-                        triggered_spell_id = 53718;
-                    }
                     else
                         return true;
                     break;
@@ -8183,12 +8176,12 @@ bool Unit::isSpellCrit(Unit *pVictim, SpellEntry const *spellProto, SpellSchoolM
                 switch(spellProto->SpellFamilyName)
                 {
                     case SPELLFAMILY_PALADIN:
-                        // Sacred Shield
+                        // Sacred Shield increase to Flash of Light crit chance
                         if (spellProto->SpellFamilyFlags & UI64LIT(0x0000000040000000))
                         {
                             Aura *aura = pVictim->GetDummyAura(58597);
                             if (aura && aura->GetCasterGUID() == GetGUID())
-                            crit_chance+=aura->GetModifier()->m_amount;
+								crit_chance+=aura->GetModifier()->m_amount;
                             break;
                         }
                     break;
@@ -8206,12 +8199,22 @@ bool Unit::isSpellCrit(Unit *pVictim, SpellEntry const *spellProto, SpellSchoolM
                             break;
                         }
                     break;
-
                 }
             }
             break;
         }
         case SPELL_DAMAGE_CLASS_MELEE:
+		{
+            // Judgement of Command proc always crits on stunned target
+            if(spellProto->SpellFamilyName == SPELLFAMILY_PALADIN)
+            {
+                if((spellProto->SpellFamilyFlags & UI64LIT(0x0000000000800000)) && spellProto->SpellIconID == 561)
+                {
+                    if(pVictim->hasUnitState(UNIT_STAT_STUNNED))
+                        return true;
+                }
+            }
+        }
         case SPELL_DAMAGE_CLASS_RANGED:
         {
             if (pVictim)

@@ -578,7 +578,7 @@ void Spell::EffectSchoolDMG(uint32 effect_idx)
             }
             case SPELLFAMILY_PALADIN:
             {
-                // Judgement of Vengeance ${1+0.22*$SPH+0.14*$AP} + 10% for each application of Holy Vengeance on the target
+                // Judgement of Vengeance/Corruption ${1+0.22*$SPH+0.14*$AP} + 10% for each application of Holy Vengeance/Blood Corruption on the target
                 if ((m_spellInfo->SpellFamilyFlags & UI64LIT(0x800000000)) && m_spellInfo->SpellIconID==2292)
                 {
                     float ap = m_caster->GetTotalAttackPowerValue(BASE_ATTACK);
@@ -589,7 +589,7 @@ void Spell::EffectSchoolDMG(uint32 effect_idx)
                     uint32 stacks = 0;
                     Unit::AuraList const& auras = unitTarget->GetAurasByType(SPELL_AURA_PERIODIC_DAMAGE);
                     for(Unit::AuraList::const_iterator itr = auras.begin(); itr!=auras.end(); ++itr)
-                        if((*itr)->GetId() == 31803 && (*itr)->GetCasterGUID()==m_caster->GetGUID())
+                        if( ((*itr)->GetId() == 31803 || (*itr)->GetId() == 53742) && (*itr)->GetCasterGUID()==m_caster->GetGUID())
                         {
                             stacks = (*itr)->GetStackAmount();
                             break;
@@ -1570,33 +1570,13 @@ void Spell::EffectDummy(uint32 i)
                 }
                 case 561:                                   // Judgement of command
                 {
-                    if(!unitTarget)
-                        return;
-
                     uint32 spell_id = m_currentBasePoints[i]+1;
                     SpellEntry const* spell_proto = sSpellStore.LookupEntry(spell_id);
+
                     if(!spell_proto)
                         return;
 
-                    if( !unitTarget->hasUnitState(UNIT_STAT_STUNNED) && m_caster->GetTypeId()==TYPEID_PLAYER)
-                    {
-                        // decreased damage (/2) for non-stunned target.
-                        SpellModifier *mod = new SpellModifier;
-                        mod->op = SPELLMOD_DAMAGE;
-                        mod->value = -50;
-                        mod->type = SPELLMOD_PCT;
-                        mod->spellId = m_spellInfo->Id;
-                        mod->mask = UI64LIT(0x0000020000000000);
-                        mod->mask2= UI64LIT(0x0);
-
-                        ((Player*)m_caster)->AddSpellMod(mod, true);
-                        m_caster->CastSpell(unitTarget, spell_proto, true, NULL);
-                                                            // mod deleted
-                        ((Player*)m_caster)->AddSpellMod(mod, false);
-                    }
-                    else
-                        m_caster->CastSpell(unitTarget, spell_proto, true, NULL);
-
+                    m_caster->CastSpell(unitTarget,spell_proto,true,NULL);
                     return;
                 }
             }
@@ -4616,12 +4596,32 @@ void Spell::EffectWeaponDmg(uint32 i)
         if(m_caster->GetTypeId()==TYPEID_PLAYER)
             ((Player*)m_caster)->AddComboPoints(unitTarget, 1);
     }
-
     // Mangle (Cat): CP
-    if (m_spellInfo->SpellFamilyName==SPELLFAMILY_DRUID && (m_spellInfo->SpellFamilyFlags==UI64LIT(0x0000040000000000)))
+    else if (m_spellInfo->SpellFamilyName==SPELLFAMILY_DRUID && (m_spellInfo->SpellFamilyFlags==UI64LIT(0x0000040000000000)))
     {
         if(m_caster->GetTypeId()==TYPEID_PLAYER)
             ((Player*)m_caster)->AddComboPoints(unitTarget, 1);
+    }
+	else if(m_spellInfo->SpellFamilyName==SPELLFAMILY_PALADIN)
+    {
+        // Judgement of Blood/of the Martyr backlash damage (33%)
+        if((m_spellInfo->SpellFamilyFlags & UI64LIT(0x0000000800000000)) && m_spellInfo->SpellIconID==153)
+        {
+            int32 damagePoint  = m_damage * 33 / 100;
+            if(m_spellInfo->Id == 31898)
+                m_caster->CastCustomSpell(m_caster, 32220, &damagePoint, NULL, NULL, true);
+            else
+                m_caster->CastCustomSpell(m_caster, 53725, &damagePoint, NULL, NULL, true);
+        }
+        // Seal of Blood/of the Martyr backlash damage (10%)
+        else if(m_spellInfo->SpellIconID==2293)
+        {
+            int32 damagePoint  = m_damage * 10 / 100;
+            if(m_spellInfo->Id == 31892)
+                m_caster->CastCustomSpell(m_caster, 32220, &damagePoint, NULL, NULL, true);
+            else
+                m_caster->CastCustomSpell(m_caster, 53718, &damagePoint, NULL, NULL, true);
+        }
     }
 
     // take ammo
