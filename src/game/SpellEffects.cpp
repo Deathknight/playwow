@@ -5862,7 +5862,7 @@ void Spell::EffectSummonObject(uint32 i)
         if( m_caster )
             obj = m_caster->GetMap()->GetGameObject(guid);
 
-        if(obj) obj->Delete();
+        if(obj) m_caster->RemoveGameObject(obj,true);
         m_caster->m_ObjectSlot[slot] = 0;
     }
 
