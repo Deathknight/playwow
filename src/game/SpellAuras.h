@@ -297,6 +297,9 @@ class MANGOS_DLL_SPEC Aura
         virtual void Update(uint32 diff);
         void ApplyModifier(bool apply, bool Real = false);
 
+		void SetDamageDoneBySpell(int32 damage) { m_damageDoneBySpell = damage; }
+        void SetHealingDoneBySpell(int32 healing) { m_healingDoneBySpell = healing; }
+
         void _AddAura();
         void _RemoveAura();
 
@@ -337,6 +340,9 @@ class MANGOS_DLL_SPEC Aura
         uint64 m_caster_guid;
         uint64 m_castItemGuid;                              // it is NOT safe to keep a pointer to the item because it may get deleted
         time_t m_applyTime;
+
+		int32 m_damageDoneBySpell;
+        int32 m_healingDoneBySpell;
 
         int32 m_currentBasePoints;                          // cache SpellEntry::EffectBasePoints and use for set custom base points
         int32 m_maxduration;                                // Max aura duration
