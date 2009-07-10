@@ -7946,7 +7946,10 @@ uint32 Unit::SpellDamageBonus(Unit *pVictim, SpellEntry const *spellProto, uint3
     AuraList const& mOwnerTaken = pVictim->GetAurasByType(SPELL_AURA_MOD_DAMAGE_FROM_CASTER);
     for(AuraList::const_iterator i = mOwnerTaken.begin(); i != mOwnerTaken.end(); ++i)
         if( (*i)->GetCasterGUID() == GetGUID() && (*i)->isAffectedOnSpell(spellProto))
-            TakenTotalMod *= ((*i)->GetModifier()->m_amount+100.0f)/100.0f;
+            if ((*i)->GetSpellProto()->SpellIconID==2209)
+                TakenTotalMod *= (100.0f-(*i)->GetModifier()->m_amount*3)/100.0f;
+            else
+                TakenTotalMod *= ((*i)->GetModifier()->m_amount+100.0f)/100.0f;
 
     // Mod damage from spell mechanic
     uint32 mechanicMask = GetAllSpellMechanicMask(spellProto);

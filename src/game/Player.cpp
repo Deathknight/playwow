@@ -13401,6 +13401,16 @@ void Player::ItemRemovedQuestCheck( uint32 entry, uint32 count )
     UpdateForQuestWorldObjects();
 }
 
+void Player::KilledMonster( uint32 entry1, uint32 entry2, uint32 entry3, uint64 guid )
+{
+    if(entry1)
+        KilledMonster(entry1,guid);
+    if(entry2)
+        KilledMonster(entry2,guid);
+    if(entry3)
+        KilledMonster(entry3,guid);
+}
+
 void Player::KilledMonster( uint32 entry, uint64 guid )
 {
     uint32 addkillcount = 1;
@@ -18918,7 +18928,7 @@ bool Player::RewardPlayerAndGroupAtKill(Unit* pVictim)
                     {
                         // normal creature (not pet/etc) can be only in !PvP case
                         if(pVictim->GetTypeId()==TYPEID_UNIT)
-                            pGroupGuy->KilledMonster(pVictim->GetEntry(), pVictim->GetGUID());
+                            pGroupGuy->KilledMonster(pVictim->GetEntry(),((Creature*)pVictim)->GetCreatureInfo()->KillCredit[0],((Creature*)pVictim)->GetCreatureInfo()->KillCredit[1], pVictim->GetGUID());
                     }
                 }
             }
@@ -18943,7 +18953,7 @@ bool Player::RewardPlayerAndGroupAtKill(Unit* pVictim)
 
             // normal creature (not pet/etc) can be only in !PvP case
             if(pVictim->GetTypeId()==TYPEID_UNIT)
-                KilledMonster(pVictim->GetEntry(),pVictim->GetGUID());
+                KilledMonster(pVictim->GetEntry(),((Creature*)pVictim)->GetCreatureInfo()->KillCredit[0],((Creature*)pVictim)->GetCreatureInfo()->KillCredit[1], pVictim->GetGUID());
         }
     }
     return xp || honored_kill;
