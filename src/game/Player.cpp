@@ -4516,7 +4516,10 @@ void Player::RepopAtGraveyard()
             GetSession()->SendPacket(&data);
         }
     }
-    SetDisplayId(GetNativeDisplayId());
+	else if(GetPositionZ() < -500.0f)
+        TeleportTo(m_homebindMapId, m_homebindX, m_homebindY, m_homebindZ, GetOrientation());
+
+	SetDisplayId(GetNativeDisplayId());
 }
 
 void Player::JoinedChannel(Channel *c)
