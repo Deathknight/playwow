@@ -3861,6 +3861,17 @@ SpellCastResult Spell::CheckCast(bool strict)
         return SPELL_CAST_OK;
 	}
 
+     // Paladin immunity spells & Avenging wrath
+    if(m_spellInfo->Id == 498 || m_spellInfo->Id == 1022 || m_spellInfo->Id == 5599 || m_spellInfo->Id == 10278)
+    {
+        Unit *target = m_targets.getUnitTarget();
+
+        if (target->HasAura(61987))
+            return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+    }
+    if(m_spellInfo->Id == 642 && m_caster->HasAura(61987))
+            return SPELL_FAILED_CANT_DO_THAT_RIGHT_NOW;
+
     // only check at first call, Stealth auras are already removed at second call
     // for now, ignore triggered spells
     if( strict && !m_IsTriggeredSpell)
