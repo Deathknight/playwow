@@ -127,4 +127,88 @@ Cell::Visit(const CellLock<LOCK_TYPE> &l, TypeContainerVisitor<T, CONTAINER> &vi
         }
     }
 }
+
+inline int CellHelper(const float radius)
+{
+    if(radius < 1.0f)
+        return 0;
+
+    return (int)ceil(radius/SIZE_OF_GRID_CELL);
+}
+
+template<class LOCK_TYPE, class T, class CONTAINER>
+inline void
+Cell::Visit(const CellLock<LOCK_TYPE> &l, TypeContainerVisitor<T, CONTAINER> &visitor, Map &m, const WorldObject &obj, float radius) const
+{
+    const CellPair &standing_cell = l.i_cellPair;
+    if (standing_cell.x_coord >= TOTAL_NUMBER_OF_CELLS_PER_MAP || standing_cell.y_coord >= TOTAL_NUMBER_OF_CELLS_PER_MAP)
+       return;
+
+    //no jokes here... Actually placing ASSERT() here was good idea, but
+    //we had some problems with DynamicObjects, which pass radius = 0.0f (DB issue?)
+    //maybe it is better to just return when radius <= 0.0f?
+    if(radius <= 0.0f)
+    {
+        m.Visit(l, visitor);
+        return;
+    }
+
+    //we should increase search radius by object's radius, otherwise
+    //we could have problems with huge creatures, which won't attack nearest players
+    radius += obj.GetObjectSize();
+    //lets calculate object coord offsets from cell borders.
+    //TODO: add more correct/generic method for this task
+    const float x_offset = (obj.GetPositionX() - CENTER_GRID_CELL_OFFSET)/SIZE_OF_GRID_CELL;
+    const float y_offset = (obj.GetPositionY() - CENTER_GRID_CELL_OFFSET)/SIZE_OF_GRID_CELL;
+
+    const float x_val = floor(x_offset + CENTER_GRID_CELL_ID + 0.5f);
+    const float y_val = floor(y_offset + CENTER_GRID_CELL_ID + 0.5f);
+    const float x_off = (x_offset - x_val + CENTER_GRID_CELL_ID) * SIZE_OF_GRID_CELL;
+    const float y_off = (y_offset - y_val + CENTER_GRID_CELL_ID) * SIZE_OF_GRID_CELL;
+
+    int left = 0, right = 0, upper = 0, lower = 0;
+
+    const float tmp_diff = radius - CENTER_GRID_CELL_OFFSET;
+    //lets calculate upper/lower/right/left corners for cell search
+    right = CellHelper(tmp_diff + x_off);
+    left = CellHelper(tmp_diff - x_off);
+    upper = CellHelper(tmp_diff + y_off);
+    lower = CellHelper(tmp_diff - y_off);
+
+    //if radius fits inside standing cell
+    if(!left && !right && !upper && !lower)
+    {
+        m.Visit(l, visitor);
+        return;
+    }
+
+    CellPair begin_cell = standing_cell;
+    CellPair end_cell = standing_cell;
+
+    begin_cell << left;
+    begin_cell -= lower;
+    end_cell >> right;
+    end_cell += upper;
+
+    //ALWAYS visit standing cell first!!!
+    m.Visit(l, visitor);
+
+    // loop the cell range
+    for(uint32 x = begin_cell.x_coord; x <= end_cell.x_coord; x++)
+    {
+        for(uint32 y = begin_cell.y_coord; y <= end_cell.y_coord; y++)
+        {
+            CellPair cell_pair(x,y);
+            //lets skip standing cell since we already visited it
+            if(cell_pair != standing_cell)
+            {
+                Cell r_zone(cell_pair);
+                r_zone.data.Part.nocreate = l->data.Part.nocreate;
+                CellLock<LOCK_TYPE> lock(r_zone, cell_pair);
+                m.Visit(lock, visitor);
+            }
+        }
+    }
+}
+
 #endif

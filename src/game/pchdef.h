@@ -10,7 +10,7 @@
 #include "Opcodes.h"
 #include "SharedDefines.h"
 
-#ifdef FASTBUILD
+//#ifdef FASTBUILD
 //add additional headers here to speed up compilation in release builds even more
 #include "ObjectMgr.h"
-#endif
+//#endif

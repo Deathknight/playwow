@@ -25,6 +25,7 @@
 #include <cmath>
 
 class Map;
+class WorldObject;
 
 enum District
 {
@@ -140,6 +141,7 @@ struct MANGOS_DLL_DECL Cell
     } data;
 
     template<class LOCK_TYPE, class T, class CONTAINER> void Visit(const CellLock<LOCK_TYPE> &, TypeContainerVisitor<T, CONTAINER> &visitor, Map &) const;
+	template<class LOCK_TYPE, class T, class CONTAINER> void Visit(const CellLock<LOCK_TYPE> &, TypeContainerVisitor<T, CONTAINER> &visitor, Map &m, const WorldObject &obj, float radius) const;
 };
 
 template<class T>
