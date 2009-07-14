@@ -162,6 +162,7 @@ bool ChatHandler::HandleReloadAllSpellCommand(const char*)
     HandleReloadSpellTargetPositionCommand("a");
     HandleReloadSpellThreatsCommand("a");
     HandleReloadSpellPetAurasCommand("a");
+	HandleReloadSpellDisabledCommand("a");
     return true;
 }
 
@@ -809,6 +810,17 @@ bool ChatHandler::HandleReloadLocalesQuestCommand(const char* /*arg*/)
     sLog.outString( "Re-Loading Locales Quest ... ");
     objmgr.LoadQuestLocales();
     SendGlobalSysMessage("DB table `locales_quest` reloaded.");
+    return true;
+}
+
+bool ChatHandler::HandleReloadSpellDisabledCommand(const char* /*arg*/)
+{
+    sLog.outString( "Re-Loading spell disabled table...");
+
+    objmgr.LoadSpellDisabledEntrys();
+
+    SendGlobalSysMessage("DB table `spell_disabled` reloaded.");
+
     return true;
 }
 

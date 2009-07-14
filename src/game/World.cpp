@@ -1280,6 +1280,9 @@ void World::SetInitialWorldSettings()
     sLog.outString( "Loading Player Corpses..." );
     objmgr.LoadCorpses();
 
+	sLog.outString( "Loading Spell disabled..." );
+    objmgr.LoadSpellDisabledEntrys();
+
     sLog.outString( "Loading Loot Tables..." );
     sLog.outString();
     LoadLootTables();
