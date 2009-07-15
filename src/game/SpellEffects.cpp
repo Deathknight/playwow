@@ -438,6 +438,29 @@ void Spell::EffectSchoolDMG(uint32 effect_idx)
                     if(unitTarget->HasAuraState(AURA_STATE_IMMOLATE))
                         damage += int32(damage*0.25f);
                 }
+                // Conflagrate - consumes immolate
+                if ((m_spellInfo->TargetAuraState == AURA_STATE_IMMOLATE) && m_targets.getUnitTarget())
+                {
+                    // for caster applied auras only
+                    Unit::AuraList const &mPeriodic = m_targets.getUnitTarget()->GetAurasByType(SPELL_AURA_PERIODIC_DAMAGE);
+                    for(Unit::AuraList::const_iterator i = mPeriodic.begin(); i != mPeriodic.end(); ++i)
+                    {
+                        if ((*i)->GetSpellProto()->SpellFamilyName == SPELLFAMILY_WARLOCK && 
+                            ((*i)->GetSpellProto()->SpellFamilyFlags & 4 || (*i)->GetSpellProto()->SpellFamilyFlags2 & 2) &&
+                            (*i)->GetCasterGUID()==m_caster->GetGUID() )
+                        {
+                            uint32 damagetick=0;
+                            if((*i)->GetCaster()->GetTypeId()==TYPEID_PLAYER)
+                                damagetick =((Player*)(*i)->GetCaster())->SpellDamageBonus(m_targets.getUnitTarget(), (*i)->GetSpellProto(), (*i)->GetModifier()->m_amount, DOT);
+                            else damagetick =(*i)->GetModifier()->m_amount;
+                                damage+=damagetick*4;
+                            // Glyph of Conflagrate
+                            if (!m_caster->HasAura(56235))
+                                unitTarget->RemoveAurasDueToSpell((*i)->GetId());
+                            break;
+	                    }
+                    }
+                }
                 break;
             }
             case SPELLFAMILY_PRIEST:
