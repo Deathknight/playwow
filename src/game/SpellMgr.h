@@ -129,6 +129,14 @@ inline bool IsSpellHaveEffect(SpellEntry const *spellInfo, SpellEffects effect)
     return false;
 }
 
+inline bool IsSpellHaveAura(SpellEntry const *spellInfo, AuraType aura)
+{
+    for(int i= 0; i < 3; ++i)
+        if(AuraType(spellInfo->EffectApplyAuraName[i])==aura)
+            return true;
+    return false;
+}
+
 bool IsNoStackAuraDueToAura(uint32 spellId_1, uint32 effIndex_1, uint32 spellId_2, uint32 effIndex_2);
 
 inline bool IsSealSpell(SpellEntry const *spellInfo)
@@ -186,8 +194,6 @@ bool IsPositiveTarget(uint32 targetA, uint32 targetB);
 
 bool IsSingleTargetSpell(SpellEntry const *spellInfo);
 bool IsSingleTargetSpells(SpellEntry const *spellInfo1, SpellEntry const *spellInfo2);
-
-bool IsAuraAddedBySpell(uint32 auraType, uint32 spellId);
 
 inline bool IsPointEffectTarget( Targets target )
 {
@@ -894,6 +900,8 @@ class SpellMgr
     // Modifiers
     public:
         static SpellMgr& Instance();
+
+        void CheckUsedSpells(char const* table);
 
         // Loading data at server startup
         void LoadSpellChains();

@@ -125,14 +125,12 @@ void Map::LoadMap(int gx,int gy, bool reload)
         if(GridMaps[gx][gy])
             return;
 
-        Map* baseMap = const_cast<Map*>(MapManager::Instance().CreateBaseMap(i_id));
-
         // load grid map for base map
-        if (!baseMap->GridMaps[gx][gy])
-            baseMap->EnsureGridCreated(GridPair(63-gx,63-gy));
+        if (!m_parentMap->GridMaps[gx][gy])
+            m_parentMap->EnsureGridCreated(GridPair(63-gx,63-gy));
 
-        ((MapInstanced*)(baseMap))->AddGridMapReference(GridPair(gx,gy));
-        GridMaps[gx][gy] = baseMap->GridMaps[gx][gy];
+        ((MapInstanced*)(m_parentMap))->AddGridMapReference(GridPair(gx,gy));
+        GridMaps[gx][gy] = m_parentMap->GridMaps[gx][gy];
         return;
     }
 
@@ -185,11 +183,11 @@ void Map::DeleteStateMachine()
     delete si_GridStates[GRID_STATE_REMOVAL];
 }
 
-Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
+Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode, Map* _parent)
   : i_mapEntry (sMapStore.LookupEntry(id)), i_spawnMode(SpawnMode),
   i_id(id), i_InstanceId(InstanceId), m_unloadTimer(0),
   m_activeNonPlayersIter(m_activeNonPlayers.end()),
-  i_gridExpiry(expiry)
+  i_gridExpiry(expiry), m_parentMap(_parent ? _parent : this)
 {
     for(unsigned int idx=0; idx < MAX_NUMBER_OF_GRIDS; ++idx)
     {
@@ -296,6 +294,13 @@ void Map::DeleteFromWorld(T* obj)
     delete obj;
 }
 
+template<>
+void Map::DeleteFromWorld(Player* pl)
+{
+    ObjectAccessor::Instance().RemoveObject(pl);
+    delete pl;
+}
+
 template<class T>
 void Map::AddNotifier(T* , Cell const& , CellPair const& )
 {
@@ -400,8 +405,7 @@ void Map::LoadGrid(const Cell& cell, bool no_unload)
 bool Map::Add(Player *player)
 {
     player->GetMapRef().link(this, player);
-
-    player->SetInstanceId(GetInstanceId());
+    player->SetMap(this);
 
     // update player state for other player and visa-versa
     CellPair p = MaNGOS::ComputeCellPair(player->GetPositionX(), player->GetPositionY());
@@ -431,6 +435,8 @@ Map::Add(T *obj)
         sLog.outError("Map::Add: Object (GUID: %u TypeId: %u) have invalid coordinates X:%f Y:%f grid cell [%u:%u]", obj->GetGUIDLow(), obj->GetTypeId(), obj->GetPositionX(), obj->GetPositionY(), p.x_coord, p.y_coord);
         return;
     }
+
+    obj->SetMap(this);
 
     Cell cell(p);
     if(obj->isActiveObject())
@@ -689,8 +695,12 @@ void Map::Remove(Player *player, bool remove)
     CellPair p = MaNGOS::ComputeCellPair(player->GetPositionX(), player->GetPositionY());
     if(p.x_coord >= TOTAL_NUMBER_OF_CELLS_PER_MAP || p.y_coord >= TOTAL_NUMBER_OF_CELLS_PER_MAP)
     {
+        if(remove)
+            player->CleanupsBeforeDelete();
+
         // invalid coordinates
         player->RemoveFromWorld();
+        player->ResetMap();
 
         if( remove )
             DeleteFromWorld(player);
@@ -710,13 +720,16 @@ void Map::Remove(Player *player, bool remove)
     NGridType *grid = getNGrid(cell.GridX(), cell.GridY());
     assert(grid != NULL);
 
+    if(remove)
+        player->CleanupsBeforeDelete();
+
     player->RemoveFromWorld();
     RemoveFromGrid(player,grid,cell);
 
     SendRemoveTransports(player);
-
     UpdateObjectsVisibilityFor(player,cell,p);
 
+    player->ResetMap();
     if( remove )
         DeleteFromWorld(player);
 }
@@ -761,6 +774,7 @@ Map::Remove(T *obj, bool remove)
 
     UpdateObjectVisibility(obj,cell,p);
 
+    obj->ResetMap();
     if( remove )
     {
         // if option set then object already saved at this moment
@@ -1030,7 +1044,8 @@ bool Map::UnloadGrid(const uint32 &x, const uint32 &y, bool pForce)
             VMAP::VMapFactory::createOrGetVMapManager()->unloadMap(GetId(), gy, gx);
         }
         else
-            ((MapInstanced*)(MapManager::Instance().CreateBaseMap(i_id)))->RemoveGridMapReference(GridPair(gx, gy));
+            ((MapInstanced*)m_parentMap)->RemoveGridMapReference(GridPair(gx, gy));
+
         GridMaps[gx][gy] = NULL;
     }
     DEBUG_LOG("Unloading grid[%u,%u] for map %u finished", x,y, i_id);
@@ -2197,8 +2212,8 @@ template void Map::Remove(DynamicObject *, bool);
 
 /* ******* Dungeon Instance Maps ******* */
 
-InstanceMap::InstanceMap(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
-  : Map(id, expiry, InstanceId, SpawnMode),
+InstanceMap::InstanceMap(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode, Map* _parent)
+  : Map(id, expiry, InstanceId, SpawnMode, _parent),
     m_resetAfterUnload(false), m_unloadWhenEmpty(false),
     i_data(NULL), i_script_id(0)
 {
@@ -2535,8 +2550,8 @@ uint32 InstanceMap::GetMaxPlayers() const
 
 /* ******* Battleground Instance Maps ******* */
 
-BattleGroundMap::BattleGroundMap(uint32 id, time_t expiry, uint32 InstanceId)
-  : Map(id, expiry, InstanceId, DIFFICULTY_NORMAL)
+BattleGroundMap::BattleGroundMap(uint32 id, time_t expiry, uint32 InstanceId, Map* _parent)
+  : Map(id, expiry, InstanceId, DIFFICULTY_NORMAL, _parent)
 {
 }
 
