@@ -306,6 +306,8 @@ bool IsPositiveEffect(uint32 spellId, uint32 effIndex)
         case 28441:                                         // not positive dummy spell
         case 37675:                                         // Chaos Blast
             return false;
+        case 36032:                                         // Arcane Blast
+            return true;
     }
 
     switch(spellproto->Effect[effIndex])
