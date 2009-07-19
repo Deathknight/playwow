@@ -473,6 +473,8 @@ enum PlayerFlags
 #define PLAYER_TITLE_HAND_OF_ADAL          UI64LIT(0x0000008000000000) // 39
 #define PLAYER_TITLE_VENGEFUL_GLADIATOR    UI64LIT(0x0000010000000000) // 40
 
+#define MAX_TITLE_INDEX     (3*64)                          // 3 uint64 fields
+
 // used in PLAYER_FIELD_BYTES values
 enum PlayerFieldByteFlags
 {
@@ -1299,8 +1301,8 @@ class MANGOS_DLL_SPEC Player : public Unit
         void GroupEventHappens( uint32 questId, WorldObject const* pEventObject );
         void ItemAddedQuestCheck( uint32 entry, uint32 count );
         void ItemRemovedQuestCheck( uint32 entry, uint32 count );
-		void KilledMonster( uint32 entry1, uint32 entry2, uint32 entry3, uint64 guid );
-        void KilledMonster( uint32 entry, uint64 guid );
+        void KilledMonster( CreatureInfo const* cInfo, uint64 guid );
+        void KilledMonsterCredit( uint32 entry, uint64 guid );
         void CastedCreatureOrGO( uint32 entry, uint64 guid, uint32 spell_id );
         void TalkedToCreature( uint32 entry, uint64 guid );
         void MoneyChanged( uint32 value );
