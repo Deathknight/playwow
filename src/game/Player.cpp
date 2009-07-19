@@ -14700,6 +14700,30 @@ void Player::_LoadAuras(QueryResult *result, uint32 timediff)
             int32 maxduration = (int32)fields[5].GetUInt32();
             int32 remaintime = (int32)fields[6].GetUInt32();
             int32 remaincharges = (int32)fields[7].GetUInt32();
+            bool IsReal = false;
+            QueryResult *resultGUID = CharacterDatabase.PQuery("SELECT guid FROM characters");
+
+            if(resultGUID)
+            {
+                Field *fields = result->Fetch();
+                uint64 r_guid = fields[0].GetUInt64();
+        
+                do
+                {
+                   if (r_guid == caster_guid)
+                      IsReal = true;
+                   continue;
+                }
+                while( resultGUID->NextRow() );
+                delete resultGUID;
+            }
+
+            if(!IsReal)
+            {
+                CharacterDatabase.PExecute("DELETE FROM character_aura WHERE guid = '%u'",caster_guid );
+                sLog.outError("Prevent server freez");
+                continue;
+            }
 
             SpellEntry const* spellproto = sSpellStore.LookupEntry(spellid);
             if(!spellproto)
