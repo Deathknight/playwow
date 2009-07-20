@@ -454,7 +454,7 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
 
         // some critters required for quests
         if(GetTypeId() == TYPEID_PLAYER)
-            ((Player*)this)->KilledMonster(pVictim->GetEntry(),pVictim->GetGUID());
+            ((Player*)this)->KilledMonster(cInfo ,pVictim->GetGUID());
 
         return damage;
     }
@@ -7463,6 +7463,34 @@ void Unit::RemoveAllAttackers()
     }
 }
 
+bool Unit::HasAuraStateForCaster(AuraState flag, uint64 caster) const
+{
+    if(!HasAuraState(flag))
+        return false;
+
+    // single per-caster aura state
+    if(flag == AURA_STATE_CONFLAGRATE)
+    {
+        Unit::AuraList const& dotList = GetAurasByType(SPELL_AURA_PERIODIC_DAMAGE);
+        for(Unit::AuraList::const_iterator i = dotList.begin(); i != dotList.end(); ++i)
+        {
+            if ((*i)->GetSpellProto()->SpellFamilyName == SPELLFAMILY_WARLOCK &&
+                (*i)->GetCasterGUID() == caster &&
+                //  Immolate
+                (((*i)->GetSpellProto()->SpellFamilyFlags & UI64LIT(0x0000000000000004)) ||
+                // Shadowflame
+                ((*i)->GetSpellProto()->SpellFamilyFlags2 & 0x00000002)))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    return true;
+}
+
 void Unit::ModifyAuraState(AuraState flag, bool apply)
 {
     if (apply)
@@ -7515,7 +7543,6 @@ void Unit::ModifyAuraState(AuraState flag, bool apply)
         }
     }
 }
-
 Unit *Unit::GetOwner() const
 {
     if(uint64 ownerid = GetOwnerGUID())
@@ -7647,19 +7674,24 @@ int32 Unit::DealHeal(Unit *pVictim, uint32 addhealth, SpellEntry const *spellPro
 {
     int32 gain = pVictim->ModifyHealth(int32(addhealth));
 
-    if (GetTypeId()==TYPEID_PLAYER)
+    Unit* unit = this;
+
+    if( GetTypeId()==TYPEID_UNIT && ((Creature*)this)->isTotem() && ((Totem*)this)->GetTotemType()!=TOTEM_STATUE)
+        unit = GetOwner();
+
+    if (unit->GetTypeId()==TYPEID_PLAYER)
     {
         // overheal = addhealth - gain
-        SendHealSpellLog(pVictim, spellProto->Id, addhealth, addhealth - gain, critical);
+        unit->SendHealSpellLog(pVictim, spellProto->Id, addhealth, addhealth - gain, critical);
 
-        if (BattleGround *bg = ((Player*)this)->GetBattleGround())
-            bg->UpdatePlayerScore((Player*)this, SCORE_HEALING_DONE, gain);
+        if (BattleGround *bg = ((Player*)unit)->GetBattleGround())
+            bg->UpdatePlayerScore((Player*)unit, SCORE_HEALING_DONE, gain);
 
         // use the actual gain, as the overheal shall not be counted, skip gain 0 (it ignored anyway in to criteria)
         if (gain)
-            ((Player*)this)->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HEALING_DONE, gain, 0, pVictim);
+            ((Player*)unit)->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HEALING_DONE, gain, 0, pVictim);
 
-        ((Player*)this)->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HEAL_CASTED, addhealth);
+        ((Player*)unit)->GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_HEAL_CASTED, addhealth);
     }
 
     if (pVictim->GetTypeId()==TYPEID_PLAYER)

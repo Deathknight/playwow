@@ -611,8 +611,8 @@ bool Player::Create( uint32 guidlow, const std::string& name, uint8 race, uint8 
 
     // Played time
     m_Last_tick = time(NULL);
-    m_Played_time[0] = 0;
-    m_Played_time[1] = 0;
+    m_Played_time[PLAYED_TIME_TOTAL] = 0;
+    m_Played_time[PLAYED_TIME_LEVEL] = 0;
 
     // base stats and related field values
     InitStatsForLevel();
@@ -1285,8 +1285,8 @@ void Player::Update( uint32 p_time )
     if (now > m_Last_tick)
     {
         uint32 elapsed = uint32(now - m_Last_tick);
-        m_Played_time[0] += elapsed;                        // Total played time
-        m_Played_time[1] += elapsed;                        // Level played time
+        m_Played_time[PLAYED_TIME_TOTAL] += elapsed;        // Total played time
+        m_Played_time[PLAYED_TIME_LEVEL] += elapsed;        // Level played time
         m_Last_tick = now;
     }
 
@@ -2377,9 +2377,12 @@ void Player::GiveLevel(uint32 level)
     SetUInt32Value(PLAYER_NEXT_LEVEL_XP, objmgr.GetXPForLevel(level));
 
     //update level, max level of skills
-    if(getLevel()!= level)
-        m_Played_time[1] = 0;                               // Level Played Time reset
+    m_Played_time[PLAYED_TIME_LEVEL] = 0;                   // Level Played Time reset
+
+    _ApplyAllLevelScaleItemMods(false);
+
     SetLevel(level);
+
     UpdateSkillsForLevel ();
 
     // save base values (bonuses already included in stored stats
@@ -2403,6 +2406,8 @@ void Player::GiveLevel(uint32 level)
         SetPower(POWER_RAGE, GetMaxPower(POWER_RAGE));
     SetPower(POWER_FOCUS, 0);
     SetPower(POWER_HAPPINESS, 0);
+
+    _ApplyAllLevelScaleItemMods(true);
 
     // update level to hunter/summon pet
     if (Pet* pet = GetPet())
@@ -6486,13 +6491,16 @@ void Player::_ApplyItemMods(Item *item, uint8 slot,bool apply)
     sLog.outDebug("_ApplyItemMods complete.");
 }
 
-void Player::_ApplyItemBonuses(ItemPrototype const *proto, uint8 slot, bool apply)
+void Player::_ApplyItemBonuses(ItemPrototype const *proto, uint8 slot, bool apply, bool only_level_scale /*= false*/)
 {
     if(slot >= INVENTORY_SLOT_BAG_END || !proto)
         return;
 
-    ScalingStatDistributionEntry const *ssd = proto->ScalingStatDistribution ? sScalingStatDistributionStore.LookupEntry(proto->ScalingStatDistribution) : 0;
-    ScalingStatValuesEntry const *ssv = proto->ScalingStatValue ? sScalingStatValuesStore.LookupEntry(getLevel()) : 0;
+    ScalingStatDistributionEntry const *ssd = proto->ScalingStatDistribution ? sScalingStatDistributionStore.LookupEntry(proto->ScalingStatDistribution) : NULL;
+    ScalingStatValuesEntry const *ssv = proto->ScalingStatValue ? sScalingStatValuesStore.LookupEntry(getLevel()) : NULL;
+
+    if(only_level_scale && !(ssd && ssv))
+        return;
 
     for (int i = 0; i < MAX_ITEM_PROTO_STATS; ++i)
     {
@@ -7213,6 +7221,24 @@ void Player::_ApplyAllItemMods()
     }
 
     sLog.outDebug("_ApplyAllItemMods complete.");
+}
+
+void Player::_ApplyAllLevelScaleItemMods(bool apply)
+{
+    for (int i = 0; i < INVENTORY_SLOT_BAG_END; ++i)
+    {
+        if(m_items[i])
+        {
+            if(m_items[i]->IsBroken())
+                continue;
+
+            ItemPrototype const *proto = m_items[i]->GetProto();
+            if(!proto)
+                continue;
+
+            _ApplyItemBonuses(proto,i, apply, true);
+        }
+    }
 }
 
 void Player::_ApplyAmmoBonuses()
@@ -13435,7 +13461,17 @@ void Player::ItemRemovedQuestCheck( uint32 entry, uint32 count )
     UpdateForQuestWorldObjects();
 }
 
-void Player::KilledMonster( uint32 entry, uint64 guid )
+void Player::KilledMonster( CreatureInfo const* cInfo, uint64 guid )
+{
+    if(cInfo->Entry)
+        KilledMonsterCredit(cInfo->Entry,guid);
+
+    for(int i = 0; i < MAX_KILL_CREDIT; ++i)
+        if(cInfo->KillCredit[i])
+            KilledMonsterCredit(cInfo->KillCredit[i],guid);
+}
+
+void Player::KilledMonsterCredit( uint32 entry, uint64 guid )
 {
     uint32 addkillcount = 1;
     GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_KILL_CREATURE, entry, addkillcount);
@@ -13878,8 +13914,8 @@ bool Player::MinimalLoadFromDB( QueryResult *result, uint32 guid )
 
     // the instance id is not needed at character enum
 
-    m_Played_time[0] = fields[7].GetUInt32();
-    m_Played_time[1] = fields[8].GetUInt32();
+    m_Played_time[PLAYED_TIME_TOTAL] = fields[7].GetUInt32();
+    m_Played_time[PLAYED_TIME_LEVEL] = fields[8].GetUInt32();
 
     m_atLoginFlags = fields[9].GetUInt32();
 
@@ -14375,8 +14411,8 @@ bool Player::LoadFromDB( uint32 guid, SqlQueryHolder *holder )
     }
 
     m_cinematic = fields[19].GetUInt32();
-    m_Played_time[0]= fields[20].GetUInt32();
-    m_Played_time[1]= fields[21].GetUInt32();
+    m_Played_time[PLAYED_TIME_TOTAL]= fields[20].GetUInt32();
+    m_Played_time[PLAYED_TIME_LEVEL]= fields[21].GetUInt32();
 
     m_resetTalentsCost = fields[25].GetUInt32();
     m_resetTalentsTime = time_t(fields[26].GetUInt64());
@@ -15635,9 +15671,9 @@ void Player::SaveToDB()
     ss << m_cinematic;
 
     ss << ", ";
-    ss << m_Played_time[0];
+    ss << m_Played_time[PLAYED_TIME_TOTAL];
     ss << ", ";
-    ss << m_Played_time[1];
+    ss << m_Played_time[PLAYED_TIME_LEVEL];
 
     ss << ", ";
     ss << finiteAlways(m_rest_bonus);
@@ -18981,7 +19017,7 @@ bool Player::RewardPlayerAndGroupAtKill(Unit* pVictim)
                     {
                         // normal creature (not pet/etc) can be only in !PvP case
                         if(pVictim->GetTypeId()==TYPEID_UNIT)
-                            pGroupGuy->KilledMonster(pVictim->GetEntry(), pVictim->GetGUID());
+                            pGroupGuy->KilledMonster(((Creature*)pVictim)->GetCreatureInfo(), pVictim->GetGUID());
                     }
                 }
             }
@@ -19008,7 +19044,7 @@ bool Player::RewardPlayerAndGroupAtKill(Unit* pVictim)
 
             // normal creature (not pet/etc) can be only in !PvP case
             if(pVictim->GetTypeId()==TYPEID_UNIT)
-                KilledMonster(pVictim->GetEntry(),pVictim->GetGUID());
+                KilledMonster(((Creature*)pVictim)->GetCreatureInfo(), pVictim->GetGUID());
         }
     }
     return xp || honored_kill;
@@ -19032,11 +19068,11 @@ void Player::RewardPlayerAndGroupAtEvent(uint32 creature_id, WorldObject* pRewar
 
             // quest objectives updated only for alive group member or dead but with not released body
             if(pGroupGuy->isAlive()|| !pGroupGuy->GetCorpse())
-                pGroupGuy->KilledMonster(creature_id, creature_guid);
+                pGroupGuy->KilledMonsterCredit(creature_id, creature_guid);
         }
     }
     else                                                    // if (!pGroup)
-        KilledMonster(creature_id, creature_guid);
+        KilledMonsterCredit(creature_id, creature_guid);
 }
 
 bool Player::IsAtGroupRewardDistance(WorldObject const* pRewardSource) const
@@ -19495,7 +19531,7 @@ bool Player::isTotalImmune()
 
 bool Player::HasTitle(uint32 bitIndex)
 {
-    if (bitIndex > 192)
+    if (bitIndex > MAX_TITLE_INDEX)
         return false;
 
     uint32 fieldIndexOffset = bitIndex / 32;

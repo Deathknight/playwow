@@ -473,6 +473,8 @@ enum PlayerFlags
 #define PLAYER_TITLE_HAND_OF_ADAL          UI64LIT(0x0000008000000000) // 39
 #define PLAYER_TITLE_VENGEFUL_GLADIATOR    UI64LIT(0x0000010000000000) // 40
 
+#define MAX_TITLE_INDEX     (3*64)                          // 3 uint64 fields
+
 // used in PLAYER_FIELD_BYTES values
 enum PlayerFieldByteFlags
 {
@@ -831,6 +833,14 @@ enum EnviromentalDamage
     DAMAGE_FALL_TO_VOID = 6                                 // custom case for fall without durability loss
 };
 
+enum PlayedTimeIndex
+{
+    PLAYED_TIME_TOTAL = 0,
+    PLAYED_TIME_LEVEL = 1
+};
+
+#define MAX_PLAYED_TIME_INDEX 2
+
 // used at player loading query list preparing, and later result selection
 enum PlayerLoginQueryIndex
 {
@@ -1026,9 +1036,9 @@ class MANGOS_DLL_SPEC Player : public Unit
         // Played Time Stuff
         time_t m_logintime;
         time_t m_Last_tick;
-        uint32 m_Played_time[2];
-        uint32 GetTotalPlayedTime() { return m_Played_time[0]; };
-        uint32 GetLevelPlayedTime() { return m_Played_time[1]; };
+        uint32 m_Played_time[MAX_PLAYED_TIME_INDEX];
+        uint32 GetTotalPlayedTime() { return m_Played_time[PLAYED_TIME_TOTAL]; };
+        uint32 GetLevelPlayedTime() { return m_Played_time[PLAYED_TIME_LEVEL]; };
 
         void setDeathState(DeathState s);                   // overwrite Unit::setDeathState
 
@@ -1289,7 +1299,8 @@ class MANGOS_DLL_SPEC Player : public Unit
         void GroupEventHappens( uint32 questId, WorldObject const* pEventObject );
         void ItemAddedQuestCheck( uint32 entry, uint32 count );
         void ItemRemovedQuestCheck( uint32 entry, uint32 count );
-        void KilledMonster( uint32 entry, uint64 guid );
+        void KilledMonster( CreatureInfo const* cInfo, uint64 guid );
+        void KilledMonsterCredit( uint32 entry, uint64 guid );
         void CastedCreatureOrGO( uint32 entry, uint64 guid, uint32 spell_id );
         void TalkedToCreature( uint32 entry, uint64 guid );
         void MoneyChanged( uint32 value );
@@ -1846,7 +1857,8 @@ class MANGOS_DLL_SPEC Player : public Unit
         void _ApplyItemMods(Item *item,uint8 slot,bool apply);
         void _RemoveAllItemMods();
         void _ApplyAllItemMods();
-        void _ApplyItemBonuses(ItemPrototype const *proto,uint8 slot,bool apply);
+        void _ApplyAllLevelScaleItemMods(bool apply);
+        void _ApplyItemBonuses(ItemPrototype const *proto,uint8 slot,bool apply, bool only_level_scale = false);
         void _ApplyAmmoBonuses();
         bool EnchantmentFitsRequirements(uint32 enchantmentcondition, int8 slot);
         void ToggleMetaGemsActive(uint8 exceptslot, bool apply);
