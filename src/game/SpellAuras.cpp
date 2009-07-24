@@ -984,9 +984,13 @@ void Aura::_AddAura()
             if (IsSealSpell(m_spellProto))
                 m_target->ModifyAuraState(AURA_STATE_JUDGEMENT, true);
 
-            // Conflagrate aura state on Immolate
-            if (m_spellProto->SpellFamilyName == SPELLFAMILY_WARLOCK && m_spellProto->SpellFamilyFlags & 4)
-                m_target->ModifyAuraState(AURA_STATE_IMMOLATE, true);
+            // Conflagrate aura state on Immolate and Shadowflame
+            if (m_spellProto->SpellFamilyName == SPELLFAMILY_WARLOCK &&
+                // Immolate
+                ((m_spellProto->SpellFamilyFlags & UI64LIT(0x0000000000000004)) ||
+                // Shadowflame
+                (m_spellProto->SpellFamilyFlags2 & 0x00000002)))
+                m_target->ModifyAuraState(AURA_STATE_CONFLAGRATE, true);
 
             // Faerie Fire (druid versions)
             if (m_spellProto->SpellFamilyName == SPELLFAMILY_DRUID && (m_spellProto->SpellFamilyFlags & UI64LIT(0x0000000000000400)))
@@ -1086,6 +1090,7 @@ void Aura::_RemoveAura()
 
         uint32 removeState = 0;
         uint64 removeFamilyFlag = m_spellProto->SpellFamilyFlags;
+        uint32 removeFamilyFlag2 = m_spellProto->SpellFamilyFlags2;
         switch(m_spellProto->SpellFamilyName)
         {
             case SPELLFAMILY_PALADIN:
@@ -1093,8 +1098,14 @@ void Aura::_RemoveAura()
                     removeState = AURA_STATE_JUDGEMENT;     // Update Seals information
                 break;
             case SPELLFAMILY_WARLOCK:
-                if(m_spellProto->SpellFamilyFlags & UI64LIT(0x4))
-                    removeState = AURA_STATE_IMMOLATE;      // Conflagrate aura state
+                // Conflagrate aura state on Immolate and Shadowflame,
+                if ((m_spellProto->SpellFamilyFlags & UI64LIT(0x0000000000000004)) ||
+                    (m_spellProto->SpellFamilyFlags2 & 0x00000002))
+                {
+                    removeFamilyFlag = UI64LIT(0x0000000000000004);
+                    removeFamilyFlag2 = 0x00000002;
+                    removeState = AURA_STATE_CONFLAGRATE;
+                }
                 break;
             case SPELLFAMILY_DRUID:
                 if(m_spellProto->SpellFamilyFlags & UI64LIT(0x0000000000000400))
@@ -1127,7 +1138,7 @@ void Aura::_RemoveAura()
             {
                 SpellEntry const *auraSpellInfo = (*i).second->GetSpellProto();
                 if(auraSpellInfo->SpellFamilyName  == m_spellProto->SpellFamilyName &&
-                   auraSpellInfo->SpellFamilyFlags & removeFamilyFlag)
+                   (auraSpellInfo->SpellFamilyFlags & removeFamilyFlag || auraSpellInfo->SpellFamilyFlags2 & removeFamilyFlag2))
                 {
                     found = true;
                     break;
@@ -1880,6 +1891,49 @@ void Aura::TriggerSpell()
 //                }
  //               break;
  //           }
+            case SPELLFAMILY_HUNTER:
+            {
+                switch (auraId)
+                {
+                    // Sniper training
+                    case 53302:
+                    case 53303:
+                    case 53304:
+                        if (target->GetTypeId() != TYPEID_PLAYER)
+                            return;
+
+                        // Reset reapply counter at move
+                        if (((Player*)target)->isMoving())
+                        {
+                            m_modifier.m_amount = 6;
+                            return;
+                        }
+
+                        // We are standing at the moment
+                        if (m_modifier.m_amount > 0)
+                        {
+                            --m_modifier.m_amount;
+                            return;
+                        }
+
+                        // select rank of buff
+                        switch(auraId)
+                        {
+                            case 53302: trigger_spell_id = 64418; break;
+                            case 53303: trigger_spell_id = 64419; break;
+                            case 53304: trigger_spell_id = 64420; break;
+                        }
+
+                        // If aura is active - no need to continue
+                        if (target->HasAura(trigger_spell_id))
+                            return;
+
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            }
             case SPELLFAMILY_DRUID:
             {
                 switch(auraId)
@@ -2043,6 +2097,10 @@ void Aura::TriggerSpell()
                 caster->CastCustomSpell(target, trigger_spell_id, &m_modifier.m_amount, NULL, NULL, true, NULL, this);
                 return;
             }
+            // Ground Slam
+            case 33525:
+                target->CastSpell(target, trigger_spell_id, true);
+                return;
         }
     }
 
@@ -4055,11 +4113,21 @@ void Aura::HandleAuraModIncreaseSwimSpeed(bool /*apply*/, bool Real)
     m_target->UpdateSpeed(MOVE_SWIM, true);
 }
 
-void Aura::HandleAuraModDecreaseSpeed(bool /*apply*/, bool Real)
+void Aura::HandleAuraModDecreaseSpeed(bool apply, bool Real)
 {
     // all applied/removed only at real aura add/remove
     if(!Real)
         return;
+
+    if (apply)
+    {
+        // Gronn Lord's Grasp, becomes stoned
+        if (GetId() == 33572)
+        {
+            if (GetStackAmount() >= 5 && !m_target->HasAura(33652))
+                m_target->CastSpell(m_target, 33652, true);
+        }
+    }
 
     m_target->UpdateSpeed(MOVE_RUN, true);
     m_target->UpdateSpeed(MOVE_SWIM, true);
@@ -4481,8 +4549,8 @@ void Aura::HandlePeriodicDamage(bool apply, bool Real)
                 // Rake
                 if (m_spellProto->SpellFamilyFlags & UI64LIT(0x0000000000001000) && m_spellProto->Effect[2]==SPELL_EFFECT_ADD_COMBO_POINTS)
                 {
-                    // $AP*0.18 bonus per tick
-                    m_modifier.m_amount += int32(caster->GetTotalAttackPowerValue(BASE_ATTACK) * 18 / 100);
+                    // $AP*0.18/3 bonus per tick
+                    m_modifier.m_amount += int32(caster->GetTotalAttackPowerValue(BASE_ATTACK) * 6 / 100);
                     return;
                 }
                 // Lacerate
@@ -6204,7 +6272,17 @@ void Aura::PeriodicTick()
             if(m_modifier.m_auraname==SPELL_AURA_OBS_MOD_HEALTH)
                 pdamage = uint32(m_target->GetMaxHealth() * amount / 100);
             else
+            {
                 pdamage = amount;
+
+                // Wild Growth (1/7 - 6 + 2*ramainTicks) %
+                if (m_spellProto->SpellFamilyName == SPELLFAMILY_DRUID && m_spellProto->SpellIconID == 2864)
+                {
+                    int32 ticks = m_maxduration/m_modifier.periodictime;
+                    int32 remainingTicks = int32(float(m_duration) / m_modifier.periodictime + 0.5);
+                    pdamage = int32(pdamage) + int32(amount)*ticks*(-6+2*remainingTicks)/100;
+                }
+            }
 
             pdamage = pCaster->SpellHealingBonus(m_target, GetSpellProto(), pdamage, DOT, GetStackAmount());
 
@@ -7126,9 +7204,7 @@ void Aura::UnregisterSingleCastAura()
 {
     if (IsSingleTarget())
     {
-        Unit* caster = NULL;
-        caster = GetCaster();
-        if(caster)
+        if(Unit* caster = GetCaster())
         {
             caster->GetSingleCastAuras().remove(this);
         }

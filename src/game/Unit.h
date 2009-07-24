@@ -854,6 +854,7 @@ typedef std::set<uint64> GuardianPetList;
 
 // delay time next attack to prevent client attack animation problems
 #define ATTACK_DISPLAY_DELAY 200
+#define MAX_PLAYER_STEALTH_DETECT_RANGE 45.0f               // max distance for detection targets by player
 
 struct SpellProcEventEntry;                                 // used only privately
 
@@ -1199,6 +1200,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
 
         bool AddAura(Aura *aur);
 
+        void RemoveAura(Aura* aura);
         void RemoveAura(AuraMap::iterator &i, AuraRemoveMode mode = AURA_REMOVE_BY_DEFAULT);
         void RemoveAura(uint32 spellId, uint32 effindex, Aura* except = NULL);
         void RemoveSingleSpellAurasFromStack(uint32 spellId);
@@ -1410,6 +1412,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         float GetAPMultiplier(WeaponAttackType attType, bool normalized);
         void ModifyAuraState(AuraState flag, bool apply);
         bool HasAuraState(AuraState flag) const { return HasFlag(UNIT_FIELD_AURASTATE, 1<<(flag-1)); }
+        bool HasAuraStateForCaster(AuraState flag, uint64 caster) const;
         void UnsummonAllTotems();
         Unit* SelectMagnetTarget(Unit *victim, SpellEntry const *spellInfo = NULL);
         int32 SpellBaseDamageBonus(SpellSchoolMask schoolMask);

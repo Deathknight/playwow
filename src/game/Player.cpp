@@ -611,8 +611,8 @@ bool Player::Create( uint32 guidlow, const std::string& name, uint8 race, uint8 
 
     // Played time
     m_Last_tick = time(NULL);
-    m_Played_time[0] = 0;
-    m_Played_time[1] = 0;
+    m_Played_time[PLAYED_TIME_TOTAL] = 0;
+    m_Played_time[PLAYED_TIME_LEVEL] = 0;
 
     // base stats and related field values
     InitStatsForLevel();
@@ -1279,8 +1279,8 @@ void Player::Update( uint32 p_time )
     {
         if (p_time >= m_DetectInvTimer)
         {
-            m_DetectInvTimer = 3000;
             HandleStealthedUnitsDetection();
+            m_DetectInvTimer = 3000;
         }
         else
             m_DetectInvTimer -= p_time;
@@ -1290,8 +1290,8 @@ void Player::Update( uint32 p_time )
     if (now > m_Last_tick)
     {
         uint32 elapsed = uint32(now - m_Last_tick);
-        m_Played_time[0] += elapsed;                        // Total played time
-        m_Played_time[1] += elapsed;                        // Level played time
+        m_Played_time[PLAYED_TIME_TOTAL] += elapsed;        // Total played time
+        m_Played_time[PLAYED_TIME_LEVEL] += elapsed;        // Level played time
         m_Last_tick = now;
     }
 
@@ -2381,9 +2381,12 @@ void Player::GiveLevel(uint32 level)
     SetUInt32Value(PLAYER_NEXT_LEVEL_XP, objmgr.GetXPForLevel(level));
 
     //update level, max level of skills
-    if(getLevel()!= level)
-        m_Played_time[1] = 0;                               // Level Played Time reset
+    m_Played_time[PLAYED_TIME_LEVEL] = 0;                   // Level Played Time reset
+
+    _ApplyAllLevelScaleItemMods(false);
+
     SetLevel(level);
+
     UpdateSkillsForLevel ();
 
     // save base values (bonuses already included in stored stats
@@ -2407,6 +2410,8 @@ void Player::GiveLevel(uint32 level)
         SetPower(POWER_RAGE, GetMaxPower(POWER_RAGE));
     SetPower(POWER_FOCUS, 0);
     SetPower(POWER_HAPPINESS, 0);
+
+    _ApplyAllLevelScaleItemMods(true);
 
     // update level to hunter/summon pet
     if (Pet* pet = GetPet())
@@ -3760,9 +3765,9 @@ void Player::BuildCreateUpdateBlockForPlayer( UpdateData *data, Player *target )
     Unit::BuildCreateUpdateBlockForPlayer( data, target );
 }
 
-void Player::DestroyForPlayer( Player *target ) const
+void Player::DestroyForPlayer( Player *target, bool anim ) const
 {
-    Unit::DestroyForPlayer( target );
+    Unit::DestroyForPlayer( target, anim );
 
     for(int i = 0; i < INVENTORY_SLOT_BAG_END; ++i)
     {
@@ -6501,13 +6506,16 @@ void Player::_ApplyItemMods(Item *item, uint8 slot,bool apply)
     sLog.outDebug("_ApplyItemMods complete.");
 }
 
-void Player::_ApplyItemBonuses(ItemPrototype const *proto, uint8 slot, bool apply)
+void Player::_ApplyItemBonuses(ItemPrototype const *proto, uint8 slot, bool apply, bool only_level_scale /*= false*/)
 {
     if(slot >= INVENTORY_SLOT_BAG_END || !proto)
         return;
 
-    ScalingStatDistributionEntry const *ssd = proto->ScalingStatDistribution ? sScalingStatDistributionStore.LookupEntry(proto->ScalingStatDistribution) : 0;
-    ScalingStatValuesEntry const *ssv = proto->ScalingStatValue ? sScalingStatValuesStore.LookupEntry(getLevel()) : 0;
+    ScalingStatDistributionEntry const *ssd = proto->ScalingStatDistribution ? sScalingStatDistributionStore.LookupEntry(proto->ScalingStatDistribution) : NULL;
+    ScalingStatValuesEntry const *ssv = proto->ScalingStatValue ? sScalingStatValuesStore.LookupEntry(getLevel()) : NULL;
+
+    if(only_level_scale && !(ssd && ssv))
+        return;
 
     for (int i = 0; i < MAX_ITEM_PROTO_STATS; ++i)
     {
@@ -7228,6 +7236,24 @@ void Player::_ApplyAllItemMods()
     }
 
     sLog.outDebug("_ApplyAllItemMods complete.");
+}
+
+void Player::_ApplyAllLevelScaleItemMods(bool apply)
+{
+    for (int i = 0; i < INVENTORY_SLOT_BAG_END; ++i)
+    {
+        if(m_items[i])
+        {
+            if(m_items[i]->IsBroken())
+                continue;
+
+            ItemPrototype const *proto = m_items[i]->GetProto();
+            if(!proto)
+                continue;
+
+            _ApplyItemBonuses(proto,i, apply, true);
+        }
+    }
 }
 
 void Player::_ApplyAmmoBonuses()
@@ -10357,7 +10383,6 @@ Item* Player::EquipNewItem( uint16 pos, uint32 item, bool update )
 
 Item* Player::EquipItem( uint16 pos, Item *pItem, bool update )
 {
-
     AddEnchantmentDurations(pItem);
     AddItemDurations(pItem);
 
@@ -13879,8 +13904,8 @@ bool Player::MinimalLoadFromDB( QueryResult *result, uint32 guid )
 
     // the instance id is not needed at character enum
 
-    m_Played_time[0] = fields[7].GetUInt32();
-    m_Played_time[1] = fields[8].GetUInt32();
+    m_Played_time[PLAYED_TIME_TOTAL] = fields[7].GetUInt32();
+    m_Played_time[PLAYED_TIME_LEVEL] = fields[8].GetUInt32();
 
     m_atLoginFlags = fields[9].GetUInt32();
 
@@ -14376,8 +14401,8 @@ bool Player::LoadFromDB( uint32 guid, SqlQueryHolder *holder )
     }
 
     m_cinematic = fields[19].GetUInt32();
-    m_Played_time[0]= fields[20].GetUInt32();
-    m_Played_time[1]= fields[21].GetUInt32();
+    m_Played_time[PLAYED_TIME_TOTAL]= fields[20].GetUInt32();
+    m_Played_time[PLAYED_TIME_LEVEL]= fields[21].GetUInt32();
 
     m_resetTalentsCost = fields[25].GetUInt32();
     m_resetTalentsTime = time_t(fields[26].GetUInt64());
@@ -15660,9 +15685,9 @@ void Player::SaveToDB()
     ss << m_cinematic;
 
     ss << ", ";
-    ss << m_Played_time[0];
+    ss << m_Played_time[PLAYED_TIME_TOTAL];
     ss << ", ";
-    ss << m_Played_time[1];
+    ss << m_Played_time[PLAYED_TIME_LEVEL];
 
     ss << ", ";
     ss << finiteAlways(m_rest_bonus);
@@ -16221,10 +16246,10 @@ void Player::SendAttackSwingBadFacingAttack()
     GetSession()->SendPacket( &data );
 }
 
-void Player::SendAutoRepeatCancel()
+void Player::SendAutoRepeatCancel(Unit *target)
 {
-    WorldPacket data(SMSG_CANCEL_AUTO_REPEAT, GetPackGUID().size());
-    data.append(GetPackGUID());                             // may be it's target guid
+    WorldPacket data(SMSG_CANCEL_AUTO_REPEAT, target->GetPackGUID().size());
+    data.append(target->GetPackGUID());                     // may be it's target guid
     GetSession()->SendPacket( &data );
 }
 
@@ -16905,35 +16930,40 @@ void Player::HandleStealthedUnitsDetection()
     cell_lock->Visit(cell_lock, world_unit_searcher, *GetMap(), *this, sWorld.GetMaxVisibleDistanceForPlayer());
     cell_lock->Visit(cell_lock, grid_unit_searcher, *GetMap(), *this, sWorld.GetMaxVisibleDistanceForPlayer());
 
-    for (std::list<Unit*>::iterator i = stealthedUnits.begin(); i != stealthedUnits.end();)
+    for (std::list<Unit*>::const_iterator i = stealthedUnits.begin(); i != stealthedUnits.end(); ++i)
     {
         if((*i)==this)
-        {
-            i = stealthedUnits.erase(i);
             continue;
-        }
 
-        if ((*i)->isVisibleForOrDetect(this,true))
+        bool hasAtClient = HaveAtClient((*i));
+        bool hasDetected = (*i)->isVisibleForOrDetect(this, true);
+
+        if (hasDetected)
         {
+            if(!hasAtClient)
+            {
+                (*i)->SendUpdateToPlayer(this);
+                m_clientGUIDs.insert((*i)->GetGUID());
 
-            (*i)->SendUpdateToPlayer(this);
-            m_clientGUIDs.insert((*i)->GetGUID());
+                #ifdef MANGOS_DEBUG
+                if((sLog.getLogFilter() & LOG_FILTER_VISIBILITY_CHANGES)==0)
+                    sLog.outDebug("Object %u (Type: %u) is detected in stealth by player %u. Distance = %f",(*i)->GetGUIDLow(),(*i)->GetTypeId(),GetGUIDLow(),GetDistance(*i));
+                #endif
 
-            #ifdef MANGOS_DEBUG
-            if((sLog.getLogFilter() & LOG_FILTER_VISIBILITY_CHANGES)==0)
-                sLog.outDebug("Object %u (Type: %u) is detected in stealth by player %u. Distance = %f",(*i)->GetGUIDLow(),(*i)->GetTypeId(),GetGUIDLow(),GetDistance(*i));
-            #endif
-
-            // target aura duration for caster show only if target exist at caster client
-            // send data at target visibility change (adding to client)
-            if((*i)!=this && (*i)->isType(TYPEMASK_UNIT))
-                SendAurasForTarget(*i);
-
-            i = stealthedUnits.erase(i);
-            continue;
+                // target aura duration for caster show only if target exist at caster client
+                // send data at target visibility change (adding to client)
+                if((*i)!=this && (*i)->isType(TYPEMASK_UNIT))
+                    SendAurasForTarget(*i);
+            }
         }
-
-        ++i;
+        else
+        {
+            if(hasAtClient)
+            {
+                (*i)->DestroyForPlayer(this);
+                m_clientGUIDs.erase((*i)->GetGUID());
+            }
+        }
     }
 }
 
@@ -17954,7 +17984,7 @@ void Player::UpdateVisibilityOf(WorldObject* target)
 {
     if(HaveAtClient(target))
     {
-        if(!target->isVisibleForInState(this,true))
+        if(!target->isVisibleForInState(this, true))
         {
             target->DestroyForPlayer(this);
             m_clientGUIDs.erase(target->GetGUID());
@@ -19566,11 +19596,30 @@ bool Player::HasTitle(uint32 bitIndex)
     return HasFlag(PLAYER__FIELD_KNOWN_TITLES + fieldIndexOffset, flag);
 }
 
-void Player::SetTitle(CharTitlesEntry const* title)
+void Player::SetTitle(CharTitlesEntry const* title, bool lost)
 {
     uint32 fieldIndexOffset = title->bit_index / 32;
     uint32 flag = 1 << (title->bit_index % 32);
-    SetFlag(PLAYER__FIELD_KNOWN_TITLES + fieldIndexOffset, flag);
+
+    if(lost)
+    {
+        if(!HasFlag(PLAYER__FIELD_KNOWN_TITLES + fieldIndexOffset, flag))
+            return;
+
+        RemoveFlag(PLAYER__FIELD_KNOWN_TITLES + fieldIndexOffset, flag);
+    }
+    else
+    {
+        if(HasFlag(PLAYER__FIELD_KNOWN_TITLES + fieldIndexOffset, flag))
+            return;
+
+        SetFlag(PLAYER__FIELD_KNOWN_TITLES + fieldIndexOffset, flag);
+    }
+
+    WorldPacket data(SMSG_TITLE_EARNED, 4 + 4);
+    data << uint32(title->bit_index);
+    data << uint32(lost ? 0 : 1);                           // 1 - earned, 0 - lost
+    GetSession()->SendPacket(&data);
 }
 
 void Player::ConvertRune(uint8 index, uint8 newType)

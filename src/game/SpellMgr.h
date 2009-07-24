@@ -68,15 +68,16 @@ enum SpellFamilyNames
 };
 
 //Some SpellFamilyFlags
-#define SPELLFAMILYFLAG_ROGUE_VANISH            UI64LIT(0x000000800)
-#define SPELLFAMILYFLAG_ROGUE_STEALTH           UI64LIT(0x000400000)
-#define SPELLFAMILYFLAG_ROGUE_BACKSTAB          UI64LIT(0x000800004)
-#define SPELLFAMILYFLAG_ROGUE_SAP               UI64LIT(0x000000080)
-#define SPELLFAMILYFLAG_ROGUE_FEINT             UI64LIT(0x008000000)
-#define SPELLFAMILYFLAG_ROGUE_KIDNEYSHOT        UI64LIT(0x000200000)
-#define SPELLFAMILYFLAG_ROGUE__FINISHING_MOVE   UI64LIT(0x9003E0000)
+#define SPELLFAMILYFLAG_ROGUE_VANISH            UI64LIT(0x0000000000000800)
+#define SPELLFAMILYFLAG_ROGUE_STEALTH           UI64LIT(0x0000000000400000)
+#define SPELLFAMILYFLAG_ROGUE_BACKSTAB          UI64LIT(0x0000000000800004)
+#define SPELLFAMILYFLAG_ROGUE_SAP               UI64LIT(0x0000000000000080)
+#define SPELLFAMILYFLAG_ROGUE_FEINT             UI64LIT(0x0000000008000000)
+#define SPELLFAMILYFLAG_ROGUE_KIDNEYSHOT        UI64LIT(0x0000000000200000)
+#define SPELLFAMILYFLAG_ROGUE__FINISHING_MOVE   UI64LIT(0x00000009003E0000)
 
 #define SPELLFAMILYFLAG_PALADIN_SEALS           UI64LIT(0x26000C000A000000)
+
 // Spell clasification
 enum SpellSpecific
 {
@@ -155,7 +156,9 @@ inline bool IsElementalShield(SpellEntry const *spellInfo)
 
 inline bool IsExplicitDiscoverySpell(SpellEntry const *spellInfo)
 {
-    return spellInfo->Effect[0]==SPELL_EFFECT_CREATE_RANDOM_ITEM && spellInfo->Effect[1]==SPELL_EFFECT_SCRIPT_EFFECT;
+    return spellInfo->Effect[0] == SPELL_EFFECT_CREATE_RANDOM_ITEM
+        && spellInfo->Effect[1] == SPELL_EFFECT_SCRIPT_EFFECT
+        || spellInfo->Id == 64323;                          // Book of Glyph Mastery (Effect0==SPELL_EFFECT_SCRIPT_EFFECT without any other data)
 }
 
 inline bool IsLootCraftingSpell(SpellEntry const *spellInfo)
