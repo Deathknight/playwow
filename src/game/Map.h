@@ -41,6 +41,8 @@ class WorldPacket;
 class InstanceData;
 class Group;
 class InstanceSave;
+struct ScriptInfo;
+struct ScriptAction;
 
 
 typedef ACE_RW_Thread_Mutex GridRWLock;
@@ -69,10 +71,11 @@ typedef MaNGOS::SingleThreaded<GridRWLock>::Lock NullGuard;
 #define MAP_MAGIC             'SPAM'
 #define MAP_VERSION_MAGIC     '0.1w'
 #define MAP_AREA_MAGIC        'AERA'
-#define MAP_HEIGTH_MAGIC      'TGHM'
+#define MAP_HEIGHT_MAGIC      'TGHM'
 #define MAP_LIQUID_MAGIC      'QILM'
 
-struct map_fileheader{
+struct map_fileheader
+{
     uint32 mapMagic;
     uint32 versionMagic;
     uint32 areaMapOffset;
@@ -84,17 +87,20 @@ struct map_fileheader{
 };
 
 #define MAP_AREA_NO_AREA      0x0001
-struct map_areaHeader{
+
+struct map_areaHeader
+{
     uint32 fourcc;
     uint16 flags;
     uint16 gridArea;
 };
 
-#define MAP_HEIGHT_NO_HIGHT   0x0001
+#define MAP_HEIGHT_NO_HEIGHT  0x0001
 #define MAP_HEIGHT_AS_INT16   0x0002
 #define MAP_HEIGHT_AS_INT8    0x0004
 
-struct map_heightHeader{
+struct map_heightHeader
+{
     uint32 fourcc;
     uint32 flags;
     float  gridHeight;
@@ -102,8 +108,10 @@ struct map_heightHeader{
 };
 
 #define MAP_LIQUID_NO_TYPE    0x0001
-#define MAP_LIQUID_NO_HIGHT   0x0002
-struct map_liquidHeader{
+#define MAP_LIQUID_NO_HEIGHT  0x0002
+
+struct map_liquidHeader
+{
     uint32 fourcc;
     uint16 flags;
     uint16 liquidType;
@@ -114,7 +122,8 @@ struct map_liquidHeader{
     float  liquidLevel;
 };
 
-enum ZLiquidStatus{
+enum ZLiquidStatus
+{
     LIQUID_MAP_NO_WATER     = 0x00000000,
     LIQUID_MAP_ABOVE_WATER  = 0x00000001,
     LIQUID_MAP_WATER_WALK   = 0x00000002,
@@ -133,7 +142,8 @@ enum ZLiquidStatus{
 #define MAP_LIQUID_TYPE_DARK_WATER  0x10
 #define MAP_LIQUID_TYPE_WMO_WATER   0x20
 
-struct LiquidData{
+struct LiquidData
+{
     uint32 type;
     float  level;
     float  depth_level;
@@ -388,6 +398,10 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::Obj
         typedef MapRefManager PlayerList;
         PlayerList const& GetPlayers() const { return m_mapRefManager; }
 
+        //per-map script storage
+        void ScriptsStart(std::map<uint32, std::multimap<uint32, ScriptInfo> > const& scripts, uint32 id, Object* source, Object* target);
+        void ScriptCommandStart(ScriptInfo const& script, uint32 delay, Object* source, Object* target);
+
         // must called with AddToWorld
         template<class T>
         void AddToActive(T* obj) { AddToActiveHelper(obj); }
@@ -444,6 +458,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::Obj
         void setGridObjectDataLoaded(bool pLoaded, uint32 x, uint32 y) { getNGrid(x,y)->setGridObjectDataLoaded(pLoaded); }
 
         void setNGrid(NGridType* grid, uint32 x, uint32 y);
+        void ScriptsProcess();
 
     protected:
         void SetUnloadReferenceLock(const GridPair &p, bool on) { getNGrid(p.x_coord, p.y_coord)->setUnloadReferenceLock(on); }
@@ -477,6 +492,7 @@ class MANGOS_DLL_SPEC Map : public GridRefManager<NGridType>, public MaNGOS::Obj
         time_t i_gridExpiry;
 
         std::set<WorldObject *> i_objectsToRemove;
+        std::multimap<time_t, ScriptAction> m_scriptSchedule;
 
         // Type specific code for add/remove to/from grid
         template<class T>
