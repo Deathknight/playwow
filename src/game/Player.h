@@ -291,6 +291,7 @@ struct Runes
 {
     RuneInfo runes[MAX_RUNES];
     uint8 runeState;                                        // mask of available runes
+    uint8 usedRunes;                                         // mask of available runes
 
     void SetRuneState(uint8 index, bool set = true)
     {
@@ -2188,10 +2189,13 @@ class MANGOS_DLL_SPEC Player : public Unit
         uint8 GetRunesState() const { return m_runes->runeState; }
         uint8 GetBaseRune(uint8 index) const { return m_runes->runes[index].BaseRune; }
         uint8 GetCurrentRune(uint8 index) const { return m_runes->runes[index].CurrentRune; }
+        uint8 GetLastUsedRuneIndex(uint8 runeType) const { return (m_runes->usedRunes & (1 << (runeType*2))) ? runeType*2 : (m_runes->usedRunes & (1 << (runeType*2+1))) ? runeType*2+1 : -1; }
         uint8 GetRuneCooldown(uint8 index) const { return m_runes->runes[index].Cooldown; }
         void SetBaseRune(uint8 index, uint8 baseRune) { m_runes->runes[index].BaseRune = baseRune; }
         void SetCurrentRune(uint8 index, uint8 currentRune) { m_runes->runes[index].CurrentRune = currentRune; }
         void SetRuneCooldown(uint8 index, uint8 cooldown) { m_runes->runes[index].Cooldown = cooldown; m_runes->SetRuneState(index, (cooldown == 0) ? true : false); }
+        void ResetLastUsedRunes() { m_runes->usedRunes = 0; }
+        void SetLastUsedRune(uint8 index) { m_runes->usedRunes |= (1 << index); }
         void ConvertRune(uint8 index, uint8 newType);
         void ResyncRunes(uint8 count);
         void AddRunePower(uint8 index);

@@ -6148,6 +6148,41 @@ bool Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura* triggeredByAu
                 target = this;
                 break;
             }
+            // Blood of the North
+            // Reaping
+            if (dummySpell->SpellIconID == 3041 || dummySpell->SpellIconID == 22)
+            {
+                // Convert recently used Blood Rune to Death Rune
+                if (GetTypeId() != TYPEID_PLAYER)
+                    return false;
+
+                uint8 rune = ((Player*)this)->GetLastUsedRuneIndex(RUNE_BLOOD);
+                if (rune != -1)
+                {
+                    ((Player*)this)->ConvertRune(rune,RUNE_DEATH);
+                    return true;
+                }
+                return false;
+            }
+            // Death Rune Mastery
+            if (dummySpell->SpellIconID == 2622)
+            {
+                // Convert recently used Unholy and Frost Runes to Death Runes
+                if (GetTypeId() != TYPEID_PLAYER)
+                    return false;
+
+                uint8 runes[2];
+                for (int i=0; i<2; ++i)
+                {
+                    runes[i] = ((Player*)this)->GetLastUsedRuneIndex(RUNE_UNHOLY+i);
+                    if (runes[i] == -1)
+                        return false;
+                }
+
+                for (int i=0; i<2; ++i)
+                    ((Player*)this)->ConvertRune(runes[i],RUNE_DEATH);
+                return true;
+            }
             // Wandering Plague
             if (dummySpell->SpellIconID == 1614)
             {
@@ -11040,6 +11075,7 @@ void Unit::ProcDamageAndSpellFor( bool isVictim, Unit * pTarget, uint32 procFlag
             case SPELL_AURA_MANA_SHIELD:
             case SPELL_AURA_OBS_MOD_MANA:
             case SPELL_AURA_DUMMY:
+            case SPELL_AURA_PERIODIC_DUMMY:
             {
                 sLog.outDebug("ProcDamageAndSpell: casting spell id %u (triggered by %s dummy aura of spell %u)", spellInfo->Id,(isVictim?"a victim's":"an attacker's"), triggeredByAura->GetId());
                 if (!HandleDummyAuraProc(pTarget, damage, triggeredByAura, procSpell, procFlag, procExtra, cooldown))

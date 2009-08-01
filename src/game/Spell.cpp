@@ -3711,9 +3711,15 @@ void Spell::TakeRunePower()
     for(uint32 i = 0; i < RUNE_DEATH; ++i)
     {
         runeCost[i] = src->RuneCost[i];
+        if(Player* modOwner = m_caster->GetSpellModOwner())
+            modOwner->ApplySpellMod(m_spellInfo->Id, SPELLMOD_COST, runeCost[i], this);
     }
 
     runeCost[RUNE_DEATH] = 0;                               // calculated later
+
+
+    plr->ResetLastUsedRunes();
+
 
     for(uint32 i = 0; i < MAX_RUNES; ++i)
     {
@@ -3721,6 +3727,7 @@ void Spell::TakeRunePower()
         if((plr->GetRuneCooldown(i) == 0) && (runeCost[rune] > 0))
         {
             plr->SetRuneCooldown(i, RUNE_COOLDOWN);         // 5*2=10 sec
+            plr->SetLastUsedRune(i);
             runeCost[rune]--;
         }
     }
