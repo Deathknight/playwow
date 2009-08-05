@@ -1781,6 +1781,7 @@ enum CreatureType
     CREATURE_TYPE_GAS_CLOUD        = 13
 };
 
+uint32 const CREATURE_TYPEMASK_DEMON_OR_UNDEAD = (1 << (CREATURE_TYPE_DEMON-1)) | (1 << (CREATURE_TYPE_UNDEAD-1));
 uint32 const CREATURE_TYPEMASK_HUMANOID_OR_UNDEAD = (1 << (CREATURE_TYPE_HUMANOID-1)) | (1 << (CREATURE_TYPE_UNDEAD-1));
 uint32 const CREATURE_TYPEMASK_MECHANICAL_OR_ELEMENTAL = (1 << (CREATURE_TYPE_MECHANICAL-1)) | (1 << (CREATURE_TYPE_ELEMENTAL-1));
 
@@ -2378,45 +2379,6 @@ enum SummonMask
     SUMMON_MASK_VEHICLE         = 0x00000010
 };
 
-enum SummonType
-{
-    SUMMON_TYPE_CRITTER         = 41,
-    SUMMON_TYPE_GUARDIAN        = 61,
-    SUMMON_TYPE_TOTEM_SLOT1     = 63,
-    SUMMON_TYPE_WILD            = 64,
-    SUMMON_TYPE_POSESSED        = 65,
-    SUMMON_TYPE_DEMON           = 66,
-    SUMMON_TYPE_SUMMON          = 67,
-    SUMMON_TYPE_TOTEM_SLOT2     = 81,
-    SUMMON_TYPE_TOTEM_SLOT3     = 82,
-    SUMMON_TYPE_TOTEM_SLOT4     = 83,
-    SUMMON_TYPE_TOTEM           = 121,
-    SUMMON_TYPE_UNKNOWN3        = 181,
-    SUMMON_TYPE_UNKNOWN4        = 187,
-    SUMMON_TYPE_UNKNOWN1        = 247,
-    SUMMON_TYPE_CRITTER2        = 407,
-    SUMMON_TYPE_CRITTER3        = 307,
-    SUMMON_TYPE_VEHICLE1        = 327,
-    SUMMON_TYPE_VEHICLE2        = 367,
-    SUMMON_TYPE_UNKNOWN5        = 409,
-    SUMMON_TYPE_UNKNOWN2        = 427,
-    SUMMON_TYPE_POSESSED2       = 428,
-    SUMMON_TYPE_VEHICLE3        = 488,
-    SUMMON_TYPE_VEHICLE4        = 493,
-    SUMMON_TYPE_VEHICLE5        = 607,
-    SUMMON_TYPE_VEHICLE6        = 708,
-    SUMMON_TYPE_VEHICLE7        = 710,
-    SUMMON_TYPE_VEHICLE8        = 716,
-    SUMMON_TYPE_VEHICLE9        = 901,
-    SUMMON_TYPE_VEHICLE10       = 941,
-    SUMMON_TYPE_VEHICLE11       = 1081,
-    SUMMON_TYPE_GUARDIAN2       = 1161,
-    SUMMON_TYPE_VEHICLE12       = 1162,
-    SUMMON_TYPE_ELEMENTAL       = 1561,
-    SUMMON_TYPE_FORCE_OF_NATURE = 1562,
-    SUMMON_TYPE_VEHICLE13       = 25995
-};
-
 /* NOTE : vehicles and seats has their own flags in DBC,
 but for now, they are too unknown for us, to use them */
 enum CustomVehicleFLags
@@ -2438,6 +2400,46 @@ enum CustomVehicleSeatFLags
     SF_UNATTACKABLE                 = 0x0002,                   // hided inside, and unatackable until vehicle is destroyed
     SF_CAN_CAST                     = 0x0004,                   // player/npc can rotate, and cast OWN spells
     SF_UNACCESSIBLE                 = 0x0008                    // player cant enter this seat by normal way (only by script)
+};
+
+enum SummonType
+{
+    SUMMON_TYPE_CRITTER     = 41,
+    SUMMON_TYPE_GUARDIAN    = 61,
+    SUMMON_TYPE_TOTEM_SLOT1 = 63,
+    SUMMON_TYPE_WILD        = 64,
+    SUMMON_TYPE_POSESSED    = 65,
+    SUMMON_TYPE_DEMON       = 66,
+    SUMMON_TYPE_SUMMON      = 67,
+    SUMMON_TYPE_TOTEM_SLOT2 = 81,
+    SUMMON_TYPE_TOTEM_SLOT3 = 82,
+    SUMMON_TYPE_TOTEM_SLOT4 = 83,
+    SUMMON_TYPE_TOTEM       = 121,
+    SUMMON_TYPE_UNKNOWN3    = 181,
+    SUMMON_TYPE_UNKNOWN4    = 187,
+    SUMMON_TYPE_UNKNOWN1    = 247,
+    SUMMON_TYPE_CRITTER2    = 407,
+    SUMMON_TYPE_CRITTER3    = 307,
+    SUMMON_TYPE_VEHICLE1    = 327,
+    SUMMON_TYPE_VEHICLE2    = 367,
+    SUMMON_TYPE_UNKNOWN5    = 409,
+    SUMMON_TYPE_UNKNOWN2    = 427,
+    SUMMON_TYPE_POSESSED2   = 428,
+    SUMMON_TYPE_VEHICLE3    = 488,
+    SUMMON_TYPE_VEHICLE4    = 493,
+    SUMMON_TYPE_VEHICLE5    = 607,
+    SUMMON_TYPE_VEHICLE6    = 708,
+    SUMMON_TYPE_VEHICLE7    = 710,
+    SUMMON_TYPE_INFERNO     = 711,
+    SUMMON_TYPE_VEHICLE8    = 716,
+    SUMMON_TYPE_VEHICLE9    = 901,
+    SUMMON_TYPE_VEHICLE10   = 941,
+    SUMMON_TYPE_VEHICLE11   = 1081,
+    SUMMON_TYPE_GUARDIAN2   = 1161,
+    SUMMON_TYPE_VEHICLE12   = 1162,
+    SUMMON_TYPE_ELEMENTAL   = 1561,
+    SUMMON_TYPE_FORCE_OF_NATURE = 1562,
+    SUMMON_TYPE_VEHICLE13   = 25995
 };
 
 enum ResponseCodes
