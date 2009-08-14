@@ -4245,18 +4245,6 @@ void Aura::HandleModMechanicImmunity(bool apply, bool /*Real*/)
 
     m_target->ApplySpellImmune(GetId(),IMMUNITY_MECHANIC,misc,apply);
 
-	// Demonic Circle
-    if (spellInfo->SpellFamilyName == SPELLFAMILY_WARLOCK && spellInfo->SpellIconID == 3221)
-    {
-        if (target->GetTypeId() != TYPEID_PLAYER)
-            return;
-        if (apply)
-        {
-            GameObject* obj = target->GetGameObject(48018);
-            if (obj)
-                ((Player*)target)->TeleportTo(obj->GetMapId(),obj->GetPositionX(),obj->GetPositionY(),obj->GetPositionZ(),obj->GetOrientation());
-        }
-    }
 
     // Bestial Wrath
     if (GetSpellProto()->SpellFamilyName == SPELLFAMILY_HUNTER && GetSpellProto()->SpellIconID == 1680)
@@ -4278,34 +4266,6 @@ void Aura::HandleModMechanicImmunity(bool apply, bool /*Real*/)
                 }
             }
         }
-    }
-
-    // The Beast Within and Bestial Wrath - immunity
-    if (spellInfo->Id == 19574 || spellInfo->Id == 34471)
-    {
-        if (apply)
-        {
-            target->CastSpell(target, 24395, true);
-            target->CastSpell(target, 24396, true);
-            target->CastSpell(target, 24397, true);
-            target->CastSpell(target, 26592, true);
-        }
-        else
-        {
-            target->RemoveAurasDueToSpell(24395);
-            target->RemoveAurasDueToSpell(24396);
-            target->RemoveAurasDueToSpell(24397);
-            target->RemoveAurasDueToSpell(26592);
-        }
-    }
-
-	// Lichborne - apply shapeshift (only at first aura apply/remove)
-    if (spellInfo->Id == 49039 && GetEffIndex() == 0)
-    {
-        if (apply)
-            target->CastSpell(target,50397,true);
-        else
-            target->RemoveAurasDueToSpell(50397);
     }
 }
 
@@ -5914,19 +5874,6 @@ void Aura::HandleSpellSpecificBoosts(bool apply)
             m_target->RemoveAurasByCasterSpell(spellId3, GetCasterGUID());
         if (spellId4)
             m_target->RemoveAurasByCasterSpell(spellId4, GetCasterGUID());
-    }
-	// Improved Barkskin - apply/remove armor bonus due to shapeshift
-    if (m_target->HasAura(63410) || m_target->HasAura(63411))
-    {
-        SpellEntry const *spellInfo = sSpellStore.LookupEntry(66530);
-        // Aura 66530 must not be revised if we (de)shift from/to Travel Form
-        if (spellInfo && !(spellInfo->Stances & (1<<form)))
-        {
-            if (apply) // We shapeshift to some form except Travel
-                m_target->RemoveAurasDueToSpell(66530);
-            else // We shapeshift to Caster form
-                m_target->CastSpell(m_target,66530,true);
-        }
     }
 
     /*double healthPercentage = (double)m_target->GetHealth() / (double)m_target->GetMaxHealth();
