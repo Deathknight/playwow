@@ -5695,7 +5695,7 @@ bool Unit::HandleDummyAuraProc(Unit *pVictim, uint32 damage, Aura* triggeredByAu
                         return false;
 
                     target = this;
-                    basepoints0 = GetCreatePowers(POWER_MANA) * 25 / 9600;
+                    basepoints0 = GetCreatePowers(POWER_MANA) * 25 / 4200;
                     triggered_spell_id = 31930;
 
                     // Replenishment
