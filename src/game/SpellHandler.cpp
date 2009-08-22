@@ -289,7 +289,10 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
     // ignore for remote control state (for player case)
     Unit* mover = _player->m_mover;
     if(mover != _player && mover->GetTypeId()==TYPEID_PLAYER)
+    {
+        recvPacket.rpos(recvPacket.wpos());                 // prevent spam at ignore packet
         return;
+    }
 
     sLog.outDebug("WORLD: got cast spell packet, spellId - %u, cast_count: %u, unk_flags %u, data length = %i",
         spellId, cast_count, unk_flags, (uint32)recvPacket.size());
@@ -299,6 +302,7 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
     if(!spellInfo)
     {
         sLog.outError("WORLD: unknown spell id %u", spellId);
+        recvPacket.rpos(recvPacket.wpos());                 // prevent spam at ignore packet
         return;
     }
 
@@ -308,6 +312,7 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
         if (!((Player*)mover)->HasActiveSpell (spellId) || IsPassiveSpell(spellId) )
         {
             //cheater? kick? ban?
+            recvPacket.rpos(recvPacket.wpos());                 // prevent spam at ignore packet
             return;
         }
     }
@@ -317,6 +322,7 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
         if (!((Creature*)mover)->HasSpell(spellId) || IsPassiveSpell(spellId) )
         {
             //cheater? kick? ban?
+            recvPacket.rpos(recvPacket.wpos());                 // prevent spam at ignore packet
             return;
         }
     }
@@ -324,7 +330,21 @@ void WorldSession::HandleCastSpellOpcode(WorldPacket& recvPacket)
     // client provided targets
     SpellCastTargets targets;
     if(!targets.read(&recvPacket,mover))
+    {
+        recvPacket.rpos(recvPacket.wpos());                 // prevent spam at ignore packet
         return;
+    }
+
+    // some spell cast packet including more data (for projectiles?)
+    if (unk_flags & 0x02)
+    {
+        recvPacket.read_skip<float>();                      // unk1, coords?
+        recvPacket.read_skip<float>();                      // unk1, coords?
+        recvPacket.read_skip<uint8>();                      // >> 1
+        recvPacket.read_skip<uint32>();                     // >> MSG_MOVE_STOP
+        MovementInfo movementInfo;
+        ReadMovementInfo(recvPacket, &movementInfo);
+    }
 
     // auto-selection buff level base at target level (in spellInfo)
     if(targets.getUnitTarget())
@@ -348,10 +368,9 @@ void WorldSession::HandleCancelCastOpcode(WorldPacket& recvPacket)
     if(mover != _player && mover->GetTypeId()==TYPEID_PLAYER)
         return;
 
-    // increments with every CANCEL packet, don't use for now
-    uint8 counter;
     uint32 spellId;
-    recvPacket >> counter;
+
+    recvPacket.read_skip<uint8>();                          // counter, increments with every CANCEL packet, don't use for now
     recvPacket >> spellId;
 
     //FIXME: hack, ignore unexpected client cancel Deadly Throw cast
@@ -402,9 +421,9 @@ void WorldSession::HandleCancelAuraOpcode( WorldPacket& recvPacket)
     // channeled spell case (it currently casted then)
     if (IsChanneledSpell(spellInfo))
     {
-        if (_player->m_currentSpells[CURRENT_CHANNELED_SPELL] &&
-            _player->m_currentSpells[CURRENT_CHANNELED_SPELL]->m_spellInfo->Id==spellId)
-            _player->InterruptSpell(CURRENT_CHANNELED_SPELL);
+        if (Spell* curSpell = _player->GetCurrentSpell(CURRENT_CHANNELED_SPELL))
+            if (curSpell->m_spellInfo->Id==spellId)
+                _player->InterruptSpell(CURRENT_CHANNELED_SPELL);
         return;
     }
 
@@ -468,13 +487,16 @@ void WorldSession::HandleCancelAutoRepeatSpellOpcode( WorldPacket& /*recvPacket*
     _player->m_mover->InterruptSpell(CURRENT_AUTOREPEAT_SPELL);
 }
 
-/// \todo Complete HandleCancelChanneling function
-void WorldSession::HandleCancelChanneling( WorldPacket & /*recv_data */)
+void WorldSession::HandleCancelChanneling( WorldPacket & recv_data)
 {
-    /*
-        uint32 spellid;
-        recv_data >> spellid;
-    */
+    recv_data.read_skip<uint32>();                          // spellid, not used
+
+    // ignore for remote control state (for player case)
+    Unit* mover = _player->m_mover;
+    if(mover != _player && mover->GetTypeId()==TYPEID_PLAYER)
+        return;
+
+    mover->InterruptSpell(CURRENT_CHANNELED_SPELL);
 }
 
 void WorldSession::HandleTotemDestroyed( WorldPacket& recvPacket)

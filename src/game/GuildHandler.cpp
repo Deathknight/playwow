@@ -58,7 +58,7 @@ void WorldSession::HandleGuildCreateOpcode(WorldPacket& recvPacket)
         return;
 
     Guild *guild = new Guild;
-    if(!guild->create(GetPlayer(),gname))
+    if(!guild->Create(GetPlayer(),gname))
     {
         delete guild;
         return;
@@ -608,20 +608,20 @@ void WorldSession::HandleGuildRankOpcode(WorldPacket& recvPacket)
     std::string rankname;
     uint32 rankId;
     uint32 rights, MoneyPerDay;
-    uint32 BankRights;
-    uint32 BankSlotPerDay;
 
     //sLog.outDebug("WORLD: Received CMSG_GUILD_RANK");
 
     guild = objmgr.GetGuildById(GetPlayer()->GetGuildId());
     if(!guild)
     {
+        recvPacket.rpos(recvPacket.wpos());                 // set to end to avoid warnings spam
         SendGuildCommandResult(GUILD_CREATE_S, "", GUILD_PLAYER_NOT_IN_GUILD);
         return;
     }
 
     else if(GetPlayer()->GetGUID() != guild->GetLeader())
     {
+        recvPacket.rpos(recvPacket.wpos());                 // set to end to avoid warnings spam
         SendGuildCommandResult(GUILD_INVITE_S, "", GUILD_PERMISSIONS);
         return;
     }
@@ -633,10 +633,14 @@ void WorldSession::HandleGuildRankOpcode(WorldPacket& recvPacket)
 
     for (int i = 0; i < GUILD_BANK_MAX_TABS; ++i)
     {
+        uint32 BankRights;
+        uint32 BankSlotPerDay;
+
         recvPacket >> BankRights;
         recvPacket >> BankSlotPerDay;
         guild->SetBankRightsAndSlots(rankId, uint8(i), uint16(BankRights & 0xFF), uint16(BankSlotPerDay), true);
     }
+
     sLog.outDebug("WORLD: Changed RankName to %s , Rights to 0x%.4X", rankname.c_str(), rights);
 
     guild->SetBankMoneyPerDay(rankId, MoneyPerDay);
@@ -821,7 +825,7 @@ void WorldSession::HandleGuildEventLogQueryOpcode(WorldPacket& /* recvPacket */)
     if(!pGuild)
         return;
 
-    pGuild->DisplayGuildEventlog(this);
+    pGuild->DisplayGuildEventLog(this);
 }
 
 /******  GUILD BANK  *******/
@@ -1024,9 +1028,14 @@ void WorldSession::HandleGuildBankSwapItems( WorldPacket & recv_data )
     uint64 GoGuid;
     uint8 BankToBank;
 
-    uint8 BankTab, BankTabSlot, AutoStore, AutoStoreCount, PlayerSlot, PlayerBag, SplitedAmount = 0;
-    uint8 BankTabDst, BankTabSlotDst, unk2, ToChar = 1;
+    uint8 BankTab, BankTabSlot, AutoStore;
+    uint8 PlayerSlot = NULL_SLOT;
+    uint8 PlayerBag = NULL_BAG;
+    uint8 BankTabDst, BankTabSlotDst, unk2;
+    uint8 ToChar = 1;
     uint32 ItemEntry, unk1;
+    uint32 AutoStoreCount = 0;
+    uint32 SplitedAmount = 0;
 
     recv_data >> GoGuid >> BankToBank;
     if (BankToBank)
@@ -1040,10 +1049,11 @@ void WorldSession::HandleGuildBankSwapItems( WorldPacket & recv_data )
         recv_data >> unk2;                                  // always 0
         recv_data >> SplitedAmount;
 
-        if (BankTabSlotDst >= GUILD_BANK_MAX_SLOTS)
+        if (BankTabSlotDst >= GUILD_BANK_MAX_SLOTS || BankTabDst == BankTab && BankTabSlotDst == BankTabSlot)
+        {
+            recv_data.rpos(recv_data.wpos());               // prevent additional spam at rejected packet
             return;
-        if (BankTabDst == BankTab && BankTabSlotDst == BankTabSlot)
-            return;
+        }
     }
     else
     {
@@ -1054,17 +1064,22 @@ void WorldSession::HandleGuildBankSwapItems( WorldPacket & recv_data )
         if (AutoStore)
         {
             recv_data >> AutoStoreCount;
+            recv_data.read_skip<uint8>();                   // ToChar (?), always and expected to be 1 (autostore only triggered in guild->ToChar)
+            recv_data.read_skip<uint32>();                  // unknown, always 0
         }
-        recv_data >> PlayerBag;
-        recv_data >> PlayerSlot;
-        if (!AutoStore)
+        else
         {
+            recv_data >> PlayerBag;
+            recv_data >> PlayerSlot;
             recv_data >> ToChar;
             recv_data >> SplitedAmount;
         }
 
         if (BankTabSlot >= GUILD_BANK_MAX_SLOTS && BankTabSlot != 0xFF)
+        {
+            recv_data.rpos(recv_data.wpos());               // prevent additional spam at rejected packet
             return;
+        }
     }
 
     if (!GetPlayer()->GetGameObjectIfCanInteractWith(GoGuid, GAMEOBJECT_TYPE_GUILD_BANK))
@@ -1198,14 +1213,6 @@ void WorldSession::HandleGuildBankSwapItems( WorldPacket & recv_data )
     }
 
     // Player <-> Bank
-
-    // char->bank autostore click return BankTabSlot = 255 = NULL_SLOT
-    // do similar for bank->char
-    if(AutoStore && ToChar)
-    {
-        PlayerBag = NULL_BAG;
-        PlayerSlot = NULL_SLOT;
-    }
 
     // allow work with inventory only
     if(!Player::IsInventoryPos(PlayerBag,PlayerSlot) && !(PlayerBag == NULL_BAG && PlayerSlot == NULL_SLOT) )
@@ -1539,7 +1546,7 @@ void WorldSession::HandleGuildBankBuyTab( WorldPacket & recv_data )
     if (pGuild->GetPurchasedTabs() >= GUILD_BANK_MAX_TABS)
         return;
 
-    if (TabId != pGuild->GetPurchasedTabs())                // purchased_tabs = 0 when buying Tab 0, that is why this check can be made
+    if (TabId != pGuild->GetPurchasedTabs())                // m_PurchasedTabs = 0 when buying Tab 0, that is why this check can be made
     {
         sLog.outError("Error: trying to buy a tab non contigous to owned ones");
         return;
