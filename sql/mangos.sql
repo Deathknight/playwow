@@ -23,7 +23,8 @@ DROP TABLE IF EXISTS `db_version`;
 CREATE TABLE `db_version` (
   `version` varchar(120) default NULL,
   `creature_ai_version` varchar(120) default NULL,
-  `required_8310_01_mangos_spell_proc_event` bit(1) default NULL
+  `cache_id` int(10) default '0',
+  `required_8399_01_mangos_spell_elixir` bit(1) default NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=FIXED COMMENT='Used DB version notes';
 
 --
@@ -33,7 +34,7 @@ CREATE TABLE `db_version` (
 LOCK TABLES `db_version` WRITE;
 /*!40000 ALTER TABLE `db_version` DISABLE KEYS */;
 INSERT INTO `db_version` VALUES
-('Mangos default database.','Creature EventAI not provided.',NULL);
+('Mangos default database.','Creature EventAI not provided.',0,NULL);
 /*!40000 ALTER TABLE `db_version` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -13591,6 +13592,7 @@ CREATE TABLE `spell_bonus_data` (
 LOCK TABLES `spell_bonus_data` WRITE;
 /*!40000 ALTER TABLE `spell_bonus_data` DISABLE KEYS */;
 INSERT INTO `spell_bonus_data` VALUES
+/* Death Knight */
 ('48721', '0', '0', '0.04', 'Death Knight - Blood Boil'),
 ('55078', '0', '0', '0.055', 'Death Knight - Blood Plague Dummy Proc'),
 ('50444', '0', '0', '0.105', 'Death Knight - Corpse Explosion Triggered'),
@@ -13605,6 +13607,7 @@ INSERT INTO `spell_bonus_data` VALUES
 ('50536', '0', '0', '0.013', 'Death Knight - Unholy Blight Triggered'),
 ('50401', '0', '0', '0', 'Death Knight - Razor Frost'),
 ('56903', '0', '0', '0', 'Death Knight - Lichflame'),
+/* Druid */
 ('5185', '1.6104', '0', '0', 'Druid - Healing Touch'),
 ('33763', '0', '0.09518', '0', 'Druid - Lifebloom'),
 ('774', '0', '0.37604', '0', 'Druid - Rejuvenation'),
@@ -13621,6 +13624,7 @@ INSERT INTO `spell_bonus_data` VALUES
 ('8921', '0.1515', '0.13', '0', 'Druid - Moonfire'),
 ('2912', '1', '0', '0', 'Druid - Starfire'),
 ('5176', '0.5714', '0', '0', 'Druid - Wrath'),
+/* Mage */
 ('30451', '0.7143', '0', '0', 'Mage - Arcane Blast'),
 ('1449', '0.2128', '0', '0', 'Mage - Arcane Explosion'),
 ('7268', '0.2857', '0', '0', 'Mage - Arcane Missiles Triggered Spell'),
@@ -13642,6 +13646,7 @@ INSERT INTO `spell_bonus_data` VALUES
 ('11426', '0.8053', '0', '0', 'Mage - Ice Barrier'),
 ('30455', '0.1429', '0', '0', 'Mage - Ice Lance'),
 ('34913','0', '0', '0', 'Mage - Molten Armor Triggered'),
+/* Paladin */
 ('19750','0.4286', '0', '0', 'Paladin - Flash of Light'),
 ('635', '0.7143', '0', '0', 'Paladin - Holy Light'),
 ('25912', '0.4286', '0', '0', 'Paladin - Holy Shock Triggered Hurt'),
@@ -13662,7 +13667,7 @@ INSERT INTO `spell_bonus_data` VALUES
 ('25742', '0.07', '0', '0.039', 'Paladin - Seal of Righteousness Dummy Proc'),
 ('53595', '0', '0', '0','Paladin - Hammer of the Righteous'),
 ('31803', '0', '0.013', '0.15', 'Paladin - Holy Vengeance'),
-('52042', '0.045', '0', '0', 'Shaman - Healing Stream Totem Triggered Heal'),
+/* Priest */
 ('32546', '0.8068', '0', '0', 'Priest - Binding Heal'),
 ('34861', '0.402', '0', '0', 'Priest - Circle of Healing'),
 ('19236', '0.8068', '0', '0', 'Priest - Desperate Prayer'),
@@ -13685,9 +13690,11 @@ INSERT INTO `spell_bonus_data` VALUES
 ('589', '0', '0.1829', '0', 'Priest - Shadow Word: Pain'),
 ('585', '0.714', '0', '0', 'Priest - Smite'),
 ('34914', '0', '0.4', '0', 'Priest - Vampiric Touch'),
+/* Shaman */
 ('974', '0.4762', '0', '0', 'Shaman - Earth Shield'),
 ('1064', '1.34', '0', '0', 'Shaman - Chain Heal'),
 ('331', '1.6106', '0', '0', 'Shaman - Healing Wave'),
+('52042', '0.045', '0', '0', 'Shaman - Healing Stream Totem Triggered Heal'),
 ('8004', '0.8082', '0', '0', 'Shaman - Lesser Healing Wave'),
 ('61295', '0.4', '0.18', '0', 'Shaman - Riptide'),
 ('421', '0.57', '0', '0', 'Shaman - Chain Lightning'),
@@ -13702,6 +13709,7 @@ INSERT INTO `spell_bonus_data` VALUES
 ('26364', '0.33', '0', '0', 'Shaman - Lightning Shield Proc'),
 ('8188', '0.1', '0', '0', 'Shaman - Magma Totam Passive'),
 ('3606', '0.1667', '0', '0', 'Shaman - Searing Totem Attack'),
+/* Warlock */
 ('980', '0', '0.1', '0', 'Warlock - Curse of Agony'),
 ('603', '0', '2', '0', 'Warlock - Curse of Doom'),
 ('172', '0', '0.3', '0', 'Warlock - Corruption'),
@@ -13728,7 +13736,9 @@ INSERT INTO `spell_bonus_data` VALUES
 ('42223', '0.952', '0', '0', 'Warlock - Rain of Fire Triggered'),
 ('18220', '0.96', '0', '0', 'Warlock - Dark Pact'),
 ('6229', '0.3', '0', '0', 'Warlock - Shadow Ward'),
-('63106', '0', '0', '0', 'Warlock - Siphon Life Triggered');
+('63106', '0', '0', '0', 'Warlock - Siphon Life Triggered'),
+/* Item */
+(40293, 0, 0, 0, 'Item - Siphon Essence');
 /*!40000 ALTER TABLE `spell_bonus_data` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -14403,6 +14413,9 @@ INSERT INTO spell_chain VALUES
 (63625,0,63625,1,0),
 (63626,63625,63625,2,0),
 (63627,63626,63625,3,0),
+/*Improved Shadowform*/
+(47569,0,47569,1,0),
+(47570,47569,47569,2,0),
 /*Mind Blast*/
 (8092,0,8092,1,0),
 (8102,8092,8092,2,0),
@@ -15369,14 +15382,6 @@ INSERT INTO spell_chain VALUES
 (30356,25258,23922,6,0),
 (47487,30356,23922,7,0),
 (47488,47487,23922,8,0),
-/*SunderArmor*/
-(7386,0,7386,1,0),
-(7405,7386,7386,2,0),
-(8380,7405,7386,3,0),
-(11596,8380,7386,4,0),
-(11597,11596,7386,5,0),
-(25225,11597,7386,6,0),
-(47467,25225,7386,7,0),
 /*------------------
 -- (267) Protection (Paladin)
 ------------------*/
@@ -16961,12 +16966,19 @@ INSERT INTO `spell_elixir` VALUES
 (17627,0x3),
 (17629,0x3),
 (17628,0x3),
+(18191,0x10),
+(18192,0x10),
+(18193,0x10),
+(18194,0x10),
+(18222,0x10),
 (21920,0x1),
+(22730,0x10),
 (24361,0x2),
 (24363,0x2),
 (24382,0x2),
 (24383,0x2),
 (24417,0x2),
+(25661,0x10),
 (26276,0x1),
 (27652,0x2),
 (27653,0x2),
@@ -17009,6 +17021,8 @@ INSERT INTO `spell_elixir` VALUES
 (45373,0x1),
 (46837,0xB),
 (46839,0xB);
+
+
 /*!40000 ALTER TABLE `spell_elixir` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -17717,6 +17731,7 @@ INSERT INTO `spell_proc_event` VALUES
 (47515, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
 (47516, 0x00000000,  6, 0x00001800, 0x00010000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
 (47517, 0x00000000,  6, 0x00001800, 0x00010000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(47569, 0x00000000,  6, 0x00004000, 0x00000000, 0x00000000, 0x00004000, 0x00000000, 0.000000, 0.000000,  0),
 (47580, 0x00000000,  6, 0x00000000, 0x00000000, 0x00000040, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
 (47581, 0x00000000,  6, 0x00000000, 0x00000000, 0x00000040, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
 (47582, 0x00000000,  6, 0x00000000, 0x00000000, 0x00000040, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
@@ -17832,6 +17847,7 @@ INSERT INTO `spell_proc_event` VALUES
 (53380, 0x00000000, 10, 0x00800000, 0x00020000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
 (53381, 0x00000000, 10, 0x00800000, 0x00020000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
 (53382, 0x00000000, 10, 0x00800000, 0x00020000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
+(53397, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
 (53486, 0x00000000, 10, 0x00800000, 0x00028000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
 (53488, 0x00000000, 10, 0x00800000, 0x00028000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
 (53501, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
@@ -17854,6 +17870,7 @@ INSERT INTO `spell_proc_event` VALUES
 (54488, 0x00000000,  0, 0x20000021, 0x00009000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
 (54489, 0x00000000,  0, 0x20000021, 0x00009000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
 (54490, 0x00000000,  0, 0x20000021, 0x00009000, 0x00000000, 0x00000000, 0x00000000, 0.000000, 0.000000,  0),
+(54646, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00015400, 0x00000002, 0.000000, 0.000000,  0),
 (54738, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000002, 0.000000, 0.000000,  0),
 (54747, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
 (54749, 0x00000000,  0, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00010000, 0.000000, 0.000000,  0),
@@ -18088,11 +18105,9 @@ INSERT INTO `spell_threat` VALUES
 (7373,141),
 (7379,235),
 (7386,100),
-(7405,140),
 (8198,40),
 (8204,64),
 (8205,96),
-(8380,180),
 (8972,118),
 (9745,148),
 (9880,178),
@@ -18104,8 +18119,6 @@ INSERT INTO `spell_threat` VALUES
 (11567,145),
 (11580,143),
 (11581,180),
-(11596,220),
-(11597,261),
 (11600,275),
 (11601,315),
 (11775,395),
@@ -18126,7 +18139,6 @@ INSERT INTO `spell_threat` VALUES
 (23925,250),
 (24394,580),
 (24583,5),
-(25225,300),
 (25231,130),
 (25258,286),
 (25264,215),

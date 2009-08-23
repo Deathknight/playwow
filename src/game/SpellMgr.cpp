@@ -135,6 +135,48 @@ SpellSpecific GetSpellSpecific(uint32 spellId)
 
     switch(spellInfo->SpellFamilyName)
     {
+        case SPELLFAMILY_GENERIC:
+        {
+            // Food / Drinks (mostly)
+            if(spellInfo->AuraInterruptFlags & AURA_INTERRUPT_FLAG_NOT_SEATED)
+            {
+                bool food = false;
+                bool drink = false;
+                for(int i = 0; i < 3; ++i)
+                {
+                    switch(spellInfo->EffectApplyAuraName[i])
+                    {
+                        // Food
+                        case SPELL_AURA_MOD_REGEN:
+                        case SPELL_AURA_OBS_MOD_HEALTH:
+                            food = true;
+                            break;
+                        // Drink
+                        case SPELL_AURA_MOD_POWER_REGEN:
+                        case SPELL_AURA_OBS_MOD_MANA:
+                            drink = true;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                if(food && drink)
+                    return SPELL_FOOD_AND_DRINK;
+                else if(food)
+                    return SPELL_FOOD;
+                else if(drink)
+                    return SPELL_DRINK;
+            }
+            else
+            {
+                // Well Fed buffs (must be exclusive with Food / Drink replenishment effects, or else Well Fed will cause them to be removed)
+                // SpellIcon 2560 is Spell 46687, does not have this flag
+                if ((spellInfo->AttributesEx2 & SPELL_ATTR_EX2_FOOD_BUFF) || spellInfo->SpellIconID == 2560)
+                    return SPELL_WELL_FED;
+            }
+            break;
+        }
         case SPELLFAMILY_MAGE:
         {
             // family flags 18(Molten), 25(Frost/Ice), 28(Mage)
@@ -163,6 +205,15 @@ SpellSpecific GetSpellSpecific(uint32 spellId)
             if (spellInfo->SpellFamilyFlags & UI64LIT(0x2000002000000000) || spellInfo->SpellFamilyFlags2 & 0x00000010)
                 return SPELL_WARLOCK_ARMOR;
 
+            break;
+        }
+        case SPELLFAMILY_PRIEST:
+        {
+            // "Well Fed" buff from Blessed Sunfruit, Blessed Sunfruit Juice, Alterac Spring Water
+            if ((spellInfo->Attributes & SPELL_ATTR_CASTABLE_WHILE_SITTING) &&
+                (spellInfo->InterruptFlags & SPELL_INTERRUPT_FLAG_AUTOATTACK) &&
+                (spellInfo->SpellIconID == 52 || spellInfo->SpellIconID == 79))
+                return SPELL_WELL_FED;
             break;
         }
         case SPELLFAMILY_HUNTER:
@@ -224,6 +275,8 @@ SpellSpecific GetSpellSpecific(uint32 spellId)
     return SPELL_NORMAL;
 }
 
+
+// target not allow have more one spell specific from same caster
 bool IsSingleFromSpellSpecificPerCaster(SpellSpecific spellSpec1,SpellSpecific spellSpec2)
 {
     switch(spellSpec1)
@@ -242,7 +295,18 @@ bool IsSingleFromSpellSpecificPerCaster(SpellSpecific spellSpec1,SpellSpecific s
         case SPELL_JUDGEMENT:
         case SPELL_PRESENCE:
         case SPELL_HAND:
+        case SPELL_WELL_FED:
             return spellSpec1==spellSpec2;
+        case SPELL_FOOD:
+            return spellSpec2==SPELL_FOOD
+                || spellSpec2==SPELL_FOOD_AND_DRINK;
+        case SPELL_DRINK:
+            return spellSpec2==SPELL_DRINK
+                || spellSpec2==SPELL_FOOD_AND_DRINK;
+        case SPELL_FOOD_AND_DRINK:
+            return spellSpec2==SPELL_FOOD
+                || spellSpec2==SPELL_DRINK
+                || spellSpec2==SPELL_FOOD_AND_DRINK;
         case SPELL_BATTLE_ELIXIR:
             return spellSpec2==SPELL_BATTLE_ELIXIR
                 || spellSpec2==SPELL_FLASK_ELIXIR;
@@ -258,6 +322,7 @@ bool IsSingleFromSpellSpecificPerCaster(SpellSpecific spellSpec1,SpellSpecific s
     }
 }
 
+// target not allow have more one ranks from spell from spell specific per target
 bool IsSingleFromSpellSpecificRanksPerTarget(SpellSpecific spellId_spec, SpellSpecific i_spellId_spec)
 {
     switch(spellId_spec)
@@ -266,6 +331,7 @@ bool IsSingleFromSpellSpecificRanksPerTarget(SpellSpecific spellId_spec, SpellSp
         case SPELL_AURA:
         case SPELL_CURSE:
         case SPELL_HAND:
+        case SPELL_ELEMENTAL_SHIELD:
             return spellId_spec==i_spellId_spec;
         default:
             return false;
@@ -301,15 +367,17 @@ bool IsPositiveEffect(uint32 spellId, uint32 effIndex)
     SpellEntry const *spellproto = sSpellStore.LookupEntry(spellId);
     if (!spellproto) return false;
 
-    switch(spellId)
-    {
-        case 28441:                                         // not positive dummy spell
-        case 37675:                                         // Chaos Blast
-            return false;
-    }
-
     switch(spellproto->Effect[effIndex])
     {
+        case SPELL_EFFECT_DUMMY:
+            // some explicitly required dummy effect sets
+            switch(spellId)
+            {
+                case 28441: return false;                   // AB Effect 000
+                default:
+                    break;
+            }
+            break;
         // always positive effects (check before target checks that provided non-positive result in some case for positive effects)
         case SPELL_EFFECT_HEAL:
         case SPELL_EFFECT_LEARN_SPELL:
@@ -349,15 +417,21 @@ bool IsPositiveEffect(uint32 spellId, uint32 effIndex)
                             break;
                     }
                 }   break;
-                case SPELL_AURA_MOD_STAT:
                 case SPELL_AURA_MOD_DAMAGE_DONE:            // dependent from bas point sign (negative -> negative)
+                case SPELL_AURA_MOD_STAT:
+                case SPELL_AURA_MOD_SKILL:
+                case SPELL_AURA_MOD_HEALING_PCT:
                 case SPELL_AURA_MOD_HEALING_DONE:
                     if(spellproto->CalculateSimpleValue(effIndex) < 0)
                         return false;
                     break;
+                case SPELL_AURA_MOD_DAMAGE_TAKEN:           // dependent from bas point sign (positive -> negative)
+                    if(spellproto->CalculateSimpleValue(effIndex) > 0)
+                        return false;
+                    break;
                 case SPELL_AURA_MOD_SPELL_CRIT_CHANCE:
                     if(spellproto->CalculateSimpleValue(effIndex) > 0)
-                        return true;                        // some expected possitive spells have SPELL_ATTR_EX_NEGATIVE
+                        return true;                        // some expected positive spells have SPELL_ATTR_EX_NEGATIVE
                     break;
                 case SPELL_AURA_ADD_TARGET_TRIGGER:
                     return true;
@@ -391,11 +465,14 @@ bool IsPositiveEffect(uint32 spellId, uint32 effIndex)
                     if(spellproto->Id == 17624)
                         return false;
                     break;
+                case SPELL_AURA_MOD_PACIFY_SILENCE:
+                    if(spellproto->Id == 24740)             // Wisp Costume
+                        return true;
+                    return false;
                 case SPELL_AURA_MOD_ROOT:
                 case SPELL_AURA_MOD_SILENCE:
                 case SPELL_AURA_GHOST:
                 case SPELL_AURA_PERIODIC_LEECH:
-                case SPELL_AURA_MOD_PACIFY_SILENCE:
                 case SPELL_AURA_MOD_STALKED:
                 case SPELL_AURA_PERIODIC_DAMAGE_PERCENT:
                     return false;
@@ -460,14 +537,6 @@ bool IsPositiveEffect(uint32 spellId, uint32 effIndex)
                             break;
                     }
                 }   break;
-                case SPELL_AURA_MOD_HEALING_PCT:
-                    if(spellproto->CalculateSimpleValue(effIndex) < 0)
-                        return false;
-                    break;
-                case SPELL_AURA_MOD_SKILL:
-                    if(spellproto->CalculateSimpleValue(effIndex) < 0)
-                        return false;
-                    break;
                 case SPELL_AURA_FORCE_REACTION:
                     if(spellproto->Id==42792)               // Recently Dropped Flag (prevent cancel)
                         return false;
@@ -1411,6 +1480,10 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
                 // Survival Instincts and Survival Instincts
                 if( spellInfo_1->Id == 61336 && spellInfo_2->Id == 50322 || spellInfo_2->Id == 61336 && spellInfo_1->Id == 50322 )
                     return false;
+
+                // Savage Roar and Savage Roar (triggered)
+                if (spellInfo_1->SpellIconID == 2865 && spellInfo_2->SpellIconID == 2865)
+                    return false;
             }
 
             // Leader of the Pack and Scroll of Stamina (multi-family check)
@@ -1427,6 +1500,12 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
             {
                 // Master of Subtlety
                 if (spellId_1 == 31665 && spellId_2 == 31666 || spellId_1 == 31666 && spellId_2 == 31665 )
+                    return false;
+
+                // Sprint & Sprint (waterwalk)
+                if( spellInfo_1->SpellIconID == 516 && spellInfo_2->SpellIconID == 516 &&
+                    (spellInfo_1->Category == 44 && spellInfo_2->Category == 0 ||
+                    spellInfo_2->Category == 44 && spellInfo_1->Category == 0))
                     return false;
             }
 
@@ -1492,10 +1571,6 @@ bool SpellMgr::IsNoStackSpellDueToSpell(uint32 spellId_1, uint32 spellId_2) cons
         case SPELLFAMILY_SHAMAN:
             if( spellInfo_2->SpellFamilyName == SPELLFAMILY_SHAMAN )
             {
-                // shaman shields
-                if( IsElementalShield(spellInfo_1) && IsElementalShield(spellInfo_2) )
-                    return true;
-
                 // Windfury weapon
                 if( spellInfo_1->SpellIconID==220 && spellInfo_2->SpellIconID==220 &&
                     spellInfo_1->SpellFamilyFlags != spellInfo_2->SpellFamilyFlags )
@@ -2490,17 +2565,17 @@ void SpellMgr::LoadSpellAreas()
             SpellAreaMapBounds sa_bounds = GetSpellAreaMapBounds(spellArea.spellId);
             for(SpellAreaMap::const_iterator itr = sa_bounds.first; itr != sa_bounds.second; ++itr)
             {
-                if(spellArea.spellId && itr->second.spellId && spellArea.spellId != itr->second.spellId)
+                if (spellArea.spellId != itr->second.spellId)
                     continue;
-                if(spellArea.areaId && itr->second.areaId && spellArea.areaId!= itr->second.areaId)
+                if (spellArea.areaId != itr->second.areaId)
                     continue;
-                if(spellArea.questStart && itr->second.questStart && spellArea.questStart!= itr->second.questStart)
+                if (spellArea.questStart != itr->second.questStart)
                     continue;
-                if(spellArea.auraSpell && itr->second.auraSpell && spellArea.auraSpell!= itr->second.auraSpell)
+                if (spellArea.auraSpell != itr->second.auraSpell)
                     continue;
-                if(spellArea.raceMask && itr->second.raceMask && (spellArea.raceMask & itr->second.raceMask)==0)
+                if ((spellArea.raceMask & itr->second.raceMask) == 0)
                     continue;
-                if(spellArea.gender != GENDER_NONE && itr->second.gender != GENDER_NONE && spellArea.gender!= itr->second.gender)
+                if (spellArea.gender != itr->second.gender)
                     continue;
 
                 // duplicate by requirements
@@ -2653,10 +2728,6 @@ void SpellMgr::LoadSpellAreas()
 
 SpellCastResult SpellMgr::GetSpellAllowedInLocationError(SpellEntry const *spellInfo, uint32 map_id, uint32 zone_id, uint32 area_id, Player const* player)
 {
-    // allow in GM-mode
-    if (player && player->isGameMaster())
-        return SPELL_CAST_OK;
-
     // normal case
     if (spellInfo->AreaGroupId > 0)
     {

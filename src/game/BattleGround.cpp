@@ -274,10 +274,12 @@ void BattleGround::Update(uint32 diff)
                         sh = plr->GetMap()->GetCreature(itr->first);
                         // only for visual effect
                         if (sh)
-                            sh->CastSpell(sh, SPELL_SPIRIT_HEAL, true);   // Spirit Heal, effect 117
+                            // Spirit Heal, effect 117
+                            sh->CastSpell(sh, SPELL_SPIRIT_HEAL, true);
                     }
 
-                    plr->CastSpell(plr, SPELL_RESURRECTION_VISUAL, true);   // Resurrection visual
+                    // Resurrection visual
+                    plr->CastSpell(plr, SPELL_RESURRECTION_VISUAL, true);
                     m_ResurrectQueue.push_back(*itr2);
                 }
                 (itr->second).clear();
@@ -853,7 +855,7 @@ void BattleGround::RewardItem(Player *plr, uint32 item_id, uint32 count)
 
     if( count != 0 && !dest.empty())                        // can add some
         if (Item* item = plr->StoreNewItem( dest, item_id, true, 0))
-            plr->SendNewItem(item,count,false,true);
+            plr->SendNewItem(item,count,true,false);
 
     if (no_space_count > 0)
         SendRewardMarkByMail(plr,item_id,no_space_count);
@@ -1041,7 +1043,7 @@ void BattleGround::RemovePlayerAtLeave(uint64 guid, bool Transport, bool SendPac
         plr->SetBGTeam(0);
 
         if (Transport)
-            plr->TeleportTo(plr->GetBattleGroundEntryPoint());
+            plr->TeleportToBGEntryPoint();
 
         sLog.outDetail("BATTLEGROUND: Removed player %s from BattleGround.", plr->GetName());
     }
@@ -1321,12 +1323,6 @@ void BattleGround::AddPlayerToResurrectQueue(uint64 npc_guid, uint64 player_guid
         return;
 
     plr->CastSpell(plr, SPELL_WAITING_FOR_RESURRECT, true);
-    SpellEntry const *spellInfo = sSpellStore.LookupEntry( SPELL_WAITING_FOR_RESURRECT );
-    if (spellInfo)
-    {
-        Aura *Aur = CreateAura(spellInfo, 0, NULL, plr);
-        plr->AddAura(Aur);
-    }
 }
 
 void BattleGround::RemovePlayerFromResurrectQueue(uint64 player_guid)
