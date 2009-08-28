@@ -26,13 +26,19 @@
 
 class Item;
 
+#define GUILD_RANKS_MIN_COUNT   5
+#define GUILD_RANKS_MAX_COUNT   10
+
 enum GuildDefaultRanks
 {
+    //these ranks can be modified, but they cannot be deleted
     GR_GUILDMASTER  = 0,
     GR_OFFICER      = 1,
-    //GR_VETERAN      = 2, -- not used anywhere and possible incorrect in modified rank list
-    //GR_MEMBER       = 3,
-    //GR_INITIATE     = 4, -- use Guild::GetLowestRank() instead for lowest rank
+    GR_VETERAN      = 2,
+    GR_MEMBER       = 3,
+    GR_INITIATE     = 4,
+    //When promoting member server does: rank--;!
+    //When demoting member server does: rank++;!
 };
 
 enum GuildRankRights
@@ -281,6 +287,7 @@ class Guild
         ~Guild();
 
         bool Create(Player* leader, std::string gname);
+        void CreateDefaultGuildRanks(int locale_idx);
         void Disband();
 
         typedef std::map<uint32, MemberSlot> MemberList;
@@ -305,8 +312,9 @@ class Guild
         void SetLeader(uint64 guid);
         bool AddMember(uint64 plGuid, uint32 plRank);
         void ChangeRank(uint64 guid, uint32 newRank);
-        void DelMember(uint64 guid, bool isDisbanding=false);
-        uint32 GetLowestRank() const { return GetNrRanks()-1; }
+        void DelMember(uint64 guid, bool isDisbanding = false);
+        //lowest rank is the count of ranks - 1 (the highest rank_id in table)
+        uint32 GetLowestRank() const { return m_Ranks.size() - 1; }
 
         void SetMOTD(std::string motd);
         void SetGINFO(std::string ginfo);
@@ -320,8 +328,7 @@ class Guild
         bool LoadRanksFromDB(uint32 GuildId);
         bool LoadMembersFromDB(uint32 GuildId);
 
-        bool FillPlayerData(uint64 guid, MemberSlot* memslot);
-        void LoadPlayerStatsByGuid(uint64 guid);
+        void SetMemberStats(uint64 guid);
 
         void BroadcastToGuild(WorldSession *session, const std::string& msg, uint32 language = LANG_UNIVERSAL);
         void BroadcastToOfficers(WorldSession *session, const std::string& msg, uint32 language = LANG_UNIVERSAL);
@@ -341,7 +348,7 @@ class Guild
         void DelRank();
         std::string GetRankName(uint32 rankId);
         uint32 GetRankRights(uint32 rankId);
-        uint32 GetNrRanks() const { return m_Ranks.size(); }
+        uint32 GetRanksSize() const { return m_Ranks.size(); }
 
         void SetRankName(uint32 rankId, std::string name);
         void SetRankRights(uint32 rankId, uint32 rights);
@@ -380,14 +387,11 @@ class Guild
         // ** Guild bank **
         // Content & item deposit/withdraw
         void   DisplayGuildBankContent(WorldSession *session, uint8 TabId);
-        void   DisplayGuildBankContentUpdate(uint8 TabId, int32 slot1, int32 slot2 = -1);
-        void   DisplayGuildBankContentUpdate(uint8 TabId, GuildItemPosCountVec const& slots);
         void   DisplayGuildBankMoneyUpdate();
 
-        Item*  GetItem(uint8 TabId, uint8 SlotId);
-        uint8  CanStoreItem( uint8 tab, uint8 slot, GuildItemPosCountVec& dest, uint32 count, Item *pItem, bool swap = false) const;
-        Item*  StoreItem( uint8 tab, GuildItemPosCountVec const& pos, Item *pItem );
-        void   RemoveItem(uint8 tab, uint8 slot );
+        void   SwapItems( Player * pl, uint8 BankTab, uint8 BankTabSlot, uint8 BankTabDst, uint8 BankTabSlotDst, uint32 SplitedAmount);
+        void   MoveFromBankToChar( Player * pl, uint8 BankTab, uint8 BankTabSlot, uint8 PlayerBag, uint8 PlayerSlot, uint32 SplitedAmount);
+        void   MoveFromCharToBank( Player * pl, uint8 PlayerBag, uint8 PlayerSlot, uint8 BankTab, uint8 BankTabSlot, uint32 SplitedAmount);
 
         // Tabs
         void   DisplayGuildBankTabsInfo(WorldSession *session);
@@ -395,7 +399,6 @@ class Guild
         void   SetGuildBankTabText(uint8 TabId, std::string text);
         void   SendGuildBankTabText(WorldSession *session, uint8 TabId);
         void   SetGuildBankTabInfo(uint8 TabId, std::string name, std::string icon);
-        void   CreateBankRightForTab(uint32 rankid, uint8 TabId);
         const  GuildBankTab *GetBankTab(uint8 index) { if(index >= m_TabListMap.size()) return NULL; return m_TabListMap[index]; }
         uint8  GetPurchasedTabs() const { return m_PurchasedTabs; }
         uint32 GetBankRights(uint32 rankId, uint8 TabId) const;
@@ -470,6 +473,14 @@ class Guild
         uint8 m_PurchasedTabs;
 
     private:
+        // used only from high level Swap/Move functions
+        Item*  GetItem(uint8 TabId, uint8 SlotId);
+        uint8  CanStoreItem( uint8 tab, uint8 slot, GuildItemPosCountVec& dest, uint32 count, Item *pItem, bool swap = false) const;
+        Item*  StoreItem( uint8 tab, GuildItemPosCountVec const& pos, Item *pItem );
+        void   RemoveItem(uint8 tab, uint8 slot );
+        void   DisplayGuildBankContentUpdate(uint8 TabId, int32 slot1, int32 slot2 = -1);
+        void   DisplayGuildBankContentUpdate(uint8 TabId, GuildItemPosCountVec const& slots);
+
         // internal common parts for CanStore/StoreItem functions
         void AppendDisplayGuildBankSlot( WorldPacket& data, GuildBankTab const *tab, int32 slot );
         uint8 _CanStoreItem_InSpecificSlot( uint8 tab, uint8 slot, GuildItemPosCountVec& dest, uint32& count, bool swap, Item *pSrcItem ) const;
