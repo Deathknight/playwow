@@ -301,7 +301,10 @@ struct CreatureDataAddonAura
 
 struct CreatureDataAddonPassengers
 {
-    int32 guidOrEntry;                                      // entry - negative, guid positive
+    CreatureDataAddonPassengers() : entry(0), guid(0), seat_idx(-1) {}
+
+    uint32 entry;
+    uint32 guid;
     int8 seat_idx;
 };
 
@@ -690,7 +693,7 @@ class MANGOS_DLL_SPEC Creature : public Unit
 
         void SetDeadByDefault (bool death_state) { m_isDeadByDefault = death_state; }
 
-        bool isActiveObject() const { return m_isActiveObject; }
+        bool isActiveObject() const { return m_isActiveObject || HasAuraType(SPELL_AURA_BIND_SIGHT) || HasAuraType(SPELL_AURA_FAR_SIGHT); }
         void SetActiveObjectState(bool on);
 
     protected:

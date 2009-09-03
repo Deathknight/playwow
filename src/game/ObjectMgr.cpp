@@ -817,7 +817,7 @@ void ObjectMgr::ConvertCreatureAddonAuras(CreatureDataAddon* addon, char const* 
 
 void ObjectMgr::ConvertCreatureAddonPassengers(CreatureDataAddon* addon, char const* table, char const* guidEntryStr)
 {
-    // Now add the auras, format "spellid effectindex spellid effectindex..."
+    // Now add the passengers, format "creature_entry/guid seatindex creature_entry/guid seatindex..."
     char *p,*s;
     std::vector<int> val;
     s=p=(char*)reinterpret_cast<char const*>(addon->passengers);
@@ -841,7 +841,7 @@ void ObjectMgr::ConvertCreatureAddonPassengers(CreatureDataAddon* addon, char co
         // wrong list
         if (val.size()%2)
         {
-            addon->passengers = NULL;
+            addon->auras = NULL;
             sLog.outErrorDb("Creature (%s: %u) has wrong `passengers` data in `%s`.",guidEntryStr,addon->guidOrEntry,table);
             return;
         }
@@ -862,33 +862,33 @@ void ObjectMgr::ConvertCreatureAddonPassengers(CreatureDataAddon* addon, char co
     {
         CreatureDataAddonPassengers& cPas = const_cast<CreatureDataAddonPassengers&>(addon->passengers[i]);
         if(guidEntryStr == "Entry")
-            cPas.guidOrEntry = (-1)*(int32)val[2*j+0];
+            cPas.entry = (uint32)val[2*j+0];
         else
-            cPas.guidOrEntry = (-1)*(int32)val[2*j+0];
-        cPas.seat_idx = (int32)val[2*j+1];
+            cPas.guid = (uint32)val[2*j+0];
+        cPas.seat_idx = (int8)val[2*j+1];
         if ( cPas.seat_idx > 7 )
         {
-            sLog.outErrorDb("Creature (%s: %u) has wrong seat %u for creature %u in `passengers` field in `%s`.",guidEntryStr,addon->guidOrEntry,cPas.seat_idx,cPas.guidOrEntry,table);
+            sLog.outErrorDb("Creature (%s: %u) has wrong seat %u for creature %u in `passengers` field in `%s`.",guidEntryStr,addon->guidOrEntry,cPas.seat_idx,cPas.entry,table);
             continue;
         }
-        if(cPas.guidOrEntry == 0)
+        if(cPas.entry == 0 && cPas.guid == 0)
         {
-            sLog.outErrorDb("Creature (%s: %u) has wrong creature entry/guid %u `passengers` field in `%s`.",guidEntryStr,addon->guidOrEntry,cPas.guidOrEntry,table);
+            sLog.outErrorDb("Creature (%s: %u) has NULL creature entry/guid in `passengers` field in `%s`.",guidEntryStr,addon->guidOrEntry,table);
             continue;
         }
-        if(cPas.guidOrEntry < 0)
+        if(cPas.entry > 0)
         {
-            if(!sCreatureStorage.LookupEntry<CreatureInfo>((-1)*cPas.guidOrEntry))
+            if(!sCreatureStorage.LookupEntry<CreatureInfo>(cPas.entry))
             {
-                sLog.outErrorDb("Creature (%s: %u) has wrong creature entry/guid %u `passengers` field in `%s`.",guidEntryStr,addon->guidOrEntry,cPas.guidOrEntry,table);
+                sLog.outErrorDb("Creature (%s: %u) has wrong creature entry/guid %u `passengers` field in `%s`.",guidEntryStr,addon->guidOrEntry,cPas.entry,table);
                 continue;
             }
         }
         else
         {
-            if(mCreatureDataMap.find(cPas.guidOrEntry)==mCreatureDataMap.end())
+            if(mCreatureDataMap.find(cPas.guid)==mCreatureDataMap.end())
             {
-                sLog.outErrorDb("Creature (%s: %u) has wrong creature entry/guid %u `passengers` field in `%s`.",guidEntryStr,addon->guidOrEntry,cPas.guidOrEntry,table);
+                sLog.outErrorDb("Creature (%s: %u) has wrong creature entry/guid %u `passengers` field in `%s`.",guidEntryStr,addon->guidOrEntry,cPas.guid,table);
                 continue;
             }
         }
@@ -897,8 +897,9 @@ void ObjectMgr::ConvertCreatureAddonPassengers(CreatureDataAddon* addon, char co
 
     // fill terminator element (after last added)
     CreatureDataAddonPassengers& endPassenger = const_cast<CreatureDataAddonPassengers&>(addon->passengers[i]);
-    endPassenger.guidOrEntry = 0;
-    endPassenger.seat_idx = 0;
+    endPassenger.entry = 0;
+    endPassenger.guid = 0;
+    endPassenger.seat_idx = -1;
 }
 
 void ObjectMgr::LoadCreatureAddons(SQLStorage& creatureaddons, char const* entryName, char const* comment)
@@ -934,7 +935,7 @@ void ObjectMgr::LoadCreatureAddons(SQLStorage& creatureaddons, char const* entry
         }
 
         ConvertCreatureAddonAuras(const_cast<CreatureDataAddon*>(addon), creatureaddons.GetTableName(), entryName);
-		ConvertCreatureAddonPassengers(const_cast<CreatureDataAddon*>(addon), creatureaddons.GetTableName(), entryName);
+        ConvertCreatureAddonPassengers(const_cast<CreatureDataAddon*>(addon), creatureaddons.GetTableName(), entryName);
     }
 }
 
@@ -1307,13 +1308,13 @@ void ObjectMgr::LoadGameobjects()
         uint32 entry        = fields[ 1].GetUInt32();
 
         GameObjectInfo const* gInfo = GetGameObjectInfo(entry);
-        if(!gInfo)
+        if (!gInfo)
         {
             sLog.outErrorDb("Table `gameobject` has gameobject (GUID: %u) with non existing gameobject entry %u, skipped.", guid, entry);
             continue;
         }
 
-        if(gInfo->displayId && !sGameObjectDisplayInfoStore.LookupEntry(gInfo->displayId))
+        if (gInfo->displayId && !sGameObjectDisplayInfoStore.LookupEntry(gInfo->displayId))
         {
             sLog.outErrorDb("Gameobject (GUID: %u Entry %u GoType: %u) have invalid displayId (%u), not loaded.",guid, entry, gInfo->type, gInfo->displayId);
             continue;
@@ -1353,25 +1354,25 @@ void ObjectMgr::LoadGameobjects()
         int16 gameEvent     = fields[16].GetInt16();
         int16 PoolId        = fields[17].GetInt16();
 
-        if(data.rotation2 < -1.0f || data.rotation2 > 1.0f)
+        if (data.rotation2 < -1.0f || data.rotation2 > 1.0f)
         {
             sLog.outErrorDb("Table `gameobject` have gameobject (GUID: %u Entry: %u) with invalid rotation2 (%f) value, skip",guid,data.id,data.rotation2 );
             continue;
         }
 
-        if(data.rotation3 < -1.0f || data.rotation3 > 1.0f)
+        if (data.rotation3 < -1.0f || data.rotation3 > 1.0f)
         {
             sLog.outErrorDb("Table `gameobject` have gameobject (GUID: %u Entry: %u) with invalid rotation3 (%f) value, skip",guid,data.id,data.rotation3 );
             continue;
         }
 
-        if(!MapManager::IsValidMapCoord(data.mapid,data.posX,data.posY,data.posZ,data.orientation))
+        if (!MapManager::IsValidMapCoord(data.mapid,data.posX,data.posY,data.posZ,data.orientation))
         {
             sLog.outErrorDb("Table `gameobject` have gameobject (GUID: %u Entry: %u) with invalid coordinates, skip",guid,data.id );
             continue;
         }
 
-        if(data.phaseMask==0)
+        if (data.phaseMask==0)
         {
             sLog.outErrorDb("Table `gameobject` have gameobject (GUID: %u Entry: %u) with `phaseMask`=0 (not visible for anyone), set to 1.",guid,data.id );
             data.phaseMask = 1;
@@ -1855,6 +1856,16 @@ void ObjectMgr::LoadItemPrototypes()
                 sLog.outErrorDb("Item (Entry: %u) has wrong stat_type%d (%u)",i,j+1,proto->ItemStat[j].ItemStatType);
                 const_cast<ItemPrototype*>(proto)->ItemStat[j].ItemStatType = 0;
             }
+
+            switch(proto->ItemStat[j].ItemStatType)
+            {
+                case ITEM_MOD_SPELL_HEALING_DONE:
+                case ITEM_MOD_SPELL_DAMAGE_DONE:
+                    sLog.outErrorDb("Item (Entry: %u) has deprecated stat_type%d (%u)",i,j+1,proto->ItemStat[j].ItemStatType);
+                    break;
+                default:
+                    break;
+            }
         }
 
         for (int j = 0; j < MAX_ITEM_PROTO_DAMAGES; ++j)
@@ -2115,10 +2126,8 @@ void ObjectMgr::LoadItemRequiredTarget()
                 if (pItemProto->Spells[i].SpellTrigger == ITEM_SPELLTRIGGER_ON_USE ||
                     pItemProto->Spells[i].SpellTrigger == ITEM_SPELLTRIGGER_ON_NO_DELAY_USE)
                 {
-                    SpellScriptTarget::const_iterator lower = spellmgr.GetBeginSpellScriptTarget(pSpellInfo->Id);
-                    SpellScriptTarget::const_iterator upper = spellmgr.GetEndSpellScriptTarget(pSpellInfo->Id);
-
-                    if (lower != upper)
+                    SpellScriptTargetBounds bounds = spellmgr.GetSpellScriptTargetBounds(pSpellInfo->Id);
+                    if (bounds.first != bounds.second)
                         break;
 
                     for (int j = 0; j < 3; ++j)
