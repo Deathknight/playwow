@@ -330,7 +330,7 @@ pAuraHandler AuraHandler[TOTAL_AURAS]=
     &Aura::HandleNoImmediateEffect,                         //277 SPELL_AURA_MOD_MAX_AFFECTED_TARGETS Use SpellClassMask for spell select
     &Aura::HandleNULL,                                      //278 SPELL_AURA_MOD_DISARM_RANGED disarm ranged weapon
     &Aura::HandleNULL,                                      //279 visual effects? 58836 and 57507
-    &Aura::HandleNULL,                                      //280 SPELL_AURA_MOD_TARGET_ARMOR_PCT
+    &Aura::HandleModTargetArmorPct,                         //280 SPELL_AURA_MOD_TARGET_ARMOR_PCT
     &Aura::HandleNULL,                                      //281 SPELL_AURA_MOD_HONOR_GAIN
     &Aura::HandleAuraIncreaseBaseHealthPercent,             //282 SPELL_AURA_INCREASE_BASE_HEALTH_PERCENT
     &Aura::HandleNoImmediateEffect,                         //283 SPELL_AURA_MOD_HEALING_RECEIVED       implemented in Unit::SpellHealingBonus
@@ -1285,6 +1285,30 @@ bool Aura::isAffectedOnSpell(SpellEntry const *spell) const
     return false;
 }
 
+void Aura::ReapplyAffectedPassiveAuras( Unit* target )
+{
+    std::set<uint32> affectedPassives;
+
+    for(Unit::AuraMap::const_iterator itr = target->GetAuras().begin(); itr != target->GetAuras().end(); ++itr)
+    {
+        // permanent passive
+        if (itr->second->IsPassive() && itr->second->IsPermanent() &&
+            // non deleted and not same aura (any with same spell id)
+            !itr->second->IsDeleted() && itr->second->GetId() != GetId() &&
+            // only applied by self and affected by aura
+            itr->second->GetCasterGUID() == target->GetGUID() && isAffectedOnSpell(itr->second->GetSpellProto()))
+        {
+            affectedPassives.insert(itr->second->GetId());
+        }
+    }
+
+    for(std::set<uint32>::const_iterator set_itr = affectedPassives.begin(); set_itr != affectedPassives.end(); ++set_itr)
+    {
+        target->RemoveAurasDueToSpell(*set_itr);
+        target->CastSpell(m_target, *set_itr, true);
+    }
+}
+
 /*********************************************************/
 /***               BASIC AURA FUNCTION                 ***/
 /*********************************************************/
@@ -1341,10 +1365,9 @@ void Aura::HandleAddModifier(bool apply, bool Real)
 
     ((Player*)m_target)->AddSpellMod(m_spellmod, apply);
 
-    // reapply some passive spells after add/remove related spellmods
-    if(m_spellProto->SpellFamilyName==SPELLFAMILY_WARRIOR && (spellFamilyMask & UI64LIT(0x0000100000000000)))
-    {
-        m_target->RemoveAurasDueToSpell(45471);
+    // reapply talents to own passive persistent auras
+    ReapplyAffectedPassiveAuras(m_target);
+
 
         if(apply)
             m_target->CastSpell(m_target, 45471, true);
@@ -1364,6 +1387,16 @@ void Aura::HandleAddModifier(bool apply, bool Real)
         if(apply)
             m_target->CastSpell(m_target,49772,true);
     }
+
+    // re-aplly talents and passives applied to pet (it affected by player spellmods)
+    if(Pet* pet = m_target->GetPet())
+        ReapplyAffectedPassiveAuras(pet);
+
+    for(int i = 0; i < MAX_TOTEM; ++i)
+        if(m_target->m_TotemSlot[i])
+            if(Creature* totem = m_target->GetMap()->GetCreature(m_target->m_TotemSlot[i]))
+                ReapplyAffectedPassiveAuras(totem);
+
 }
 void Aura::HandleAddTargetTrigger(bool apply, bool /*Real*/)
 {
@@ -5849,7 +5882,13 @@ void Aura::HandleSpellSpecificBoosts(bool apply)
             }
             // Aspect of the Dragonhawk dodge
             else if (GetSpellProto()->SpellFamilyFlags2 & 0x00001000)
+            {
                 spellId1 = 61848;
+
+                // triggered spell have same category as main spell and cooldown
+                if (apply && m_target->GetTypeId()==TYPEID_PLAYER)
+                    ((Player*)m_target)->RemoveSpellCooldown(61848);
+            }
             else
                 return;
             break;
@@ -7483,4 +7522,12 @@ bool Aura::IsCritFromAbilityAura(Unit* caster, uint32& damage)
         return true;
     }
     return false;
+}
+
+void Aura::HandleModTargetArmorPct(bool apply, bool Real)
+{
+    if(m_target->GetTypeId() != TYPEID_PLAYER)
+        return;
+
+    ((Player*)m_target)->UpdateArmorPenetration();
 }

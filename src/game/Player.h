@@ -878,7 +878,8 @@ enum PlayerLoginQueryIndex
     PLAYER_LOGIN_QUERY_LOADCRITERIAPROGRESS     = 19,
     PLAYER_LOGIN_QUERY_LOADEQUIPMENTSETS        = 20,
     PLAYER_LOGIN_QUERY_LOADBGDATA               = 21,
-    MAX_PLAYER_LOGIN_QUERY                      = 22
+    PLAYER_LOGIN_QUERY_LOADACCOUNTDATA          = 22,
+    MAX_PLAYER_LOGIN_QUERY                      = 23
 };
 
 enum PlayerDelayedOperations
@@ -1697,8 +1698,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         void UpdateAttackPowerAndDamage(bool ranged = false);
         void UpdateShieldBlockValue();
         void UpdateDamagePhysical(WeaponAttackType attType);
-        void ApplySpellDamageBonus(int32 amount, bool apply);
-        void ApplySpellHealingBonus(int32 amount, bool apply);
+        void ApplySpellPowerBonus(int32 amount, bool apply);
         void UpdateSpellDamageAndHealingBonus();
 
         void CalculateMinMaxDamage(WeaponAttackType attType, bool normalized, float& min_damage, float& max_damage);
@@ -1716,8 +1716,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         uint32 GetRangedCritDamageReduction(uint32 damage) const;
         uint32 GetSpellCritDamageReduction(uint32 damage) const;
         uint32 GetDotDamageReduction(uint32 damage) const;
-        uint32 GetBaseSpellDamageBonus() { return m_baseSpellDamage;}
-        uint32 GetBaseSpellHealingBonus() { return m_baseSpellHealing;}
+        uint32 GetBaseSpellPowerBonus() { return m_baseSpellPower; }
 
         float GetExpertiseDodgeOrParryReduction(WeaponAttackType attType) const;
         void UpdateBlockPercentage();
@@ -1732,6 +1731,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         void UpdateAllSpellCritChances();
         void UpdateSpellCritChance(uint32 school);
         void UpdateExpertise(WeaponAttackType attType);
+        void UpdateArmorPenetration();
         void ApplyManaRegenBonus(int32 amount, bool apply);
         void UpdateManaRegen();
 
@@ -1895,6 +1895,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         float GetTotalPercentageModValue(BaseModGroup modGroup) const { return m_auraBaseMod[modGroup][FLAT_MOD] + m_auraBaseMod[modGroup][PCT_MOD]; }
         void _ApplyAllStatBonuses();
         void _RemoveAllStatBonuses();
+        float GetArmorPenetrationPct() const { return m_armorPenetrationPct; }
 
         void _ApplyWeaponDependentAuraMods(Item *item, WeaponAttackType attackType, bool apply);
         void _ApplyWeaponDependentAuraCritMod(Item *item, WeaponAttackType attackType, Aura* aura, bool apply);
@@ -2056,7 +2057,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         /***              ENVIROMENTAL SYSTEM                  ***/
         /*********************************************************/
 
-        void EnvironmentalDamage(EnviromentalDamage type, uint32 damage);
+        uint32 EnvironmentalDamage(EnviromentalDamage type, uint32 damage);
 
         /*********************************************************/
         /***               FLOOD FILTER SYSTEM                 ***/
@@ -2364,10 +2365,10 @@ class MANGOS_DLL_SPEC Player : public Unit
 
         float m_auraBaseMod[BASEMOD_END][MOD_END];
         int16 m_baseRatingValue[MAX_COMBAT_RATING];
-        uint16 m_baseSpellDamage;
-        uint16 m_baseSpellHealing;
+        uint16 m_baseSpellPower;
         uint16 m_baseFeralAP;
         uint16 m_baseManaRegen;
+        float m_armorPenetrationPct;
 
         SpellModList m_spellMods[MAX_SPELLMOD];
         int32 m_SpellModRemoveCount;
