@@ -1541,8 +1541,6 @@ void Spell::EffectDummy(uint32 i)
             // Penance
             if (m_spellInfo->SpellFamilyFlags & UI64LIT(0x0080000000000000))
             {
-                if (!unitTarget)
-                    return;
 
                 int hurt = 0;
                 int heal = 0;
@@ -1556,10 +1554,15 @@ void Spell::EffectDummy(uint32 i)
                         sLog.outError("Spell::EffectDummy: Spell %u Penance need set correct heal/damage spell", m_spellInfo->Id);
                         return;
                 }
+                if(unitTarget)
+                {
                 if (m_caster->IsFriendlyTo(unitTarget))
                     m_caster->CastSpell(unitTarget, heal, true, 0);
                 else
                     m_caster->CastSpell(unitTarget, hurt, true, 0);
+
+                }else
+                    m_caster->CastSpell(m_caster, heal, true, 0);
                 return;
             }
             break;
