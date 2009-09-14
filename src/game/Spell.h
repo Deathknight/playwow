@@ -318,6 +318,7 @@ class Spell
         void EffectEnergisePct(uint32 i);
         void EffectTriggerSpellWithValue(uint32 i);
         void EffectTriggerRitualOfSummoning(uint32 i);
+        void EffectKillCreditPersonal(uint32 i);
         void EffectKillCredit(uint32 i);
         void EffectQuestFail(uint32 i);
         void EffectActivateRune(uint32 i);
@@ -326,6 +327,8 @@ class Spell
         void EffectSummonVehicle(uint32 i);
         void EffectDamageBuilding(uint32 i);
         void EffectPlayMusic(uint32 i);
+        void EffectSpecCount(uint32 i);
+        void EffectActivateSpec(uint32 i);
 
         Spell( Unit* Caster, SpellEntry const *info, bool triggered, uint64 originalCasterGUID = 0, Spell** triggeringContainer = NULL );
         ~Spell();
@@ -371,8 +374,10 @@ class Spell
 
         typedef std::list<Unit*> UnitList;
         void FillTargetMap();
+
         void SetTargetMap(uint32 i,uint32 cur,UnitList& TagUnitMap);
         void FillCustomTargetMap(uint32 i, UnitList& TagUnitMap);
+
 
         void FillAreaTargets( UnitList& TagUnitMap, float x, float y, float radius, SpellNotifyPushType pushType, SpellTargets spellTargets );
         void FillRaidOrPartyTargets( UnitList &TagUnitMap, Unit* member, Unit* center, float radius, bool raid, bool withPets, bool withcaster );

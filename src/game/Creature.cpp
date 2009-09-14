@@ -447,7 +447,7 @@ void Creature::Update(uint32 diff)
 
             RegenerateMana();
 
-            m_regenTimer = 2000;
+            m_regenTimer = REGEN_TIME_FULL;
             break;
         }
         case DEAD_FALLING:
@@ -783,6 +783,10 @@ void Creature::prepareGossipMenu( Player *pPlayer,uint32 gossipid )
                         if(!isCanTrainingOf(pPlayer,false))
                             cantalking=false;
                         break;
+                    case GOSSIP_OPTION_LEARNDUALSPEC:
+                        if(!(pPlayer->GetSpecsCount() == 1 && isCanTrainingAndResetTalentsOf(pPlayer) && !(pPlayer->getLevel() < sWorld.getConfig(CONFIG_MIN_DUALSPEC_LEVEL))))
+                            cantalking=false;
+                        break;
                     case GOSSIP_OPTION_UNLEARNTALENTS:
                         if(!isCanTrainingAndResetTalentsOf(pPlayer))
                             cantalking=false;
@@ -919,6 +923,29 @@ void Creature::OnGossipSelect(Player* player, uint32 option)
         case GOSSIP_OPTION_UNLEARNTALENTS:
             player->PlayerTalkClass->CloseGossip();
             player->SendTalentWipeConfirm(guid);
+            break;
+        case GOSSIP_OPTION_LEARNDUALSPEC:
+            if(player->GetSpecsCount() == 1 && !(player->getLevel() < sWorld.getConfig(CONFIG_MIN_DUALSPEC_LEVEL)))
+            {
+                if (player->GetMoney() < 10000000)
+                {
+                    player->SendBuyError( BUY_ERR_NOT_ENOUGHT_MONEY, 0, 0, 0);
+                    player->PlayerTalkClass->CloseGossip();
+                    break;
+                }
+                else
+                {
+                    player->ModifyMoney(-10000000);
+
+                    // Cast spells that teach dual spec
+                    // Both are also ImplicitTarget self and must be cast by player
+                    player->CastSpell(player,63680,true,NULL,NULL,player->GetGUID());
+                    player->CastSpell(player,63624,true,NULL,NULL,player->GetGUID());
+
+                    // Should show another Gossip text with "Congratulations..."
+                    player->PlayerTalkClass->CloseGossip();
+                }
+            }
             break;
         case GOSSIP_OPTION_UNLEARNPETSKILLS:
             player->PlayerTalkClass->CloseGossip();
@@ -1462,10 +1489,10 @@ float Creature::GetAttackDistance(Unit const* pl) const
     if(aggroRate==0)
         return 0.0f;
 
-    int32 playerlevel   = pl->getLevelForTarget(this);
-    int32 creaturelevel = getLevelForTarget(pl);
+    uint32 playerlevel   = pl->getLevelForTarget(this);
+    uint32 creaturelevel = getLevelForTarget(pl);
 
-    int32 leveldif       = playerlevel - creaturelevel;
+    int32 leveldif       = int32(playerlevel) - int32(creaturelevel);
 
     // "The maximum Aggro Radius has a cap of 25 levels under. Example: A level 30 char has the same Aggro Radius of a level 5 char on a level 60 mob."
     if ( leveldif < - 25)
@@ -1759,7 +1786,7 @@ bool Creature::IsVisibleInGridForPlayer(Player* pl) const
     {
         if(GetCreatureInfo()->flags_extra & CREATURE_FLAG_EXTRA_INVISIBLE)
             return false;
-        return isAlive() || m_deathTimer > 0 || m_isDeadByDefault && m_deathState==CORPSE;
+        return (isAlive() || m_deathTimer > 0 || (m_isDeadByDefault && m_deathState == CORPSE));
     }
 
     // Dead player see live creatures near own corpse
